@@ -1,0 +1,83 @@
+# ==============================================================================
+# 🌟 (Global Settings)
+# ==============================================================================
+globals:
+  scale: 4
+  lq_patch_size: 64
+
+# ==============================================================================
+# Global & Trainer Configuration
+# ==============================================================================
+trainer:
+  max_epochs: 300
+  accelerator: "gpu"
+  devices: [0]               # Use list for specific GPUs, e.g., [0, 1]
+  precision: "bf16-mixed"      # FP16 mixed precision for faster training
+  log_every_n_steps: 10
+  check_val_every_n_epoch: 3
+
+
+# ==============================================================================
+# DataModule Configuration (SRDataModule)
+# ==============================================================================
+data:
+  # Path configs (Replace with your actual dataset paths)
+  train_img_dir: "/data/RiceSR2024/SAR/dataset/train/LR_bicubic/X4"
+  train_gt_dir: "/data/RiceSR2024/SAR/dataset/train/GT"
+  val_img_dir: "/data/RiceSR2024/SAR/dataset/val/LR_bicubic/X4"
+  val_gt_dir: "/data/RiceSR2024/SAR/dataset/val/GT"
+  test_img_dir: "/data/RiceSR2024/SAR/dataset/test/LR_bicubic/X4"   # Optional
+  test_gt_dir: "/data/RiceSR2024/SAR/dataset/test/GT"    # Optional
+  
+  # DataLoader configs
+  batch_size: 4
+  num_workers: 8
+  
+  # Image transformation configs
+  lq_patch_size: ${globals.lq_patch_size}   # The size to crop from Low-Res image
+  scale: ${globals.scale}                   # Upsampling factor. HR patch will be 32 * 4 = 128
+
+  image_range: "-1~1"
+
+# ==============================================================================
+# Ema decay
+# ==============================================================================
+ema_decay: 0
+
+# ==============================================================================
+# LightningModule Configuration (SRDiffusionModule)
+# ==============================================================================
+lightning_module:
+  target: AutoencoderKL
+  
+  params:
+    monitor: "val/rec_loss"
+    embed_dim: 3
+
+    lossconfig:
+      target: models.ldm.modules.lossses.LPIPSWithDiscriminator
+      params:
+        disc_start: 50001
+        kl_weight: 0.000001
+        disc_weight: 0.5
+
+    ddconfig:
+      double_z: True
+      z_channels: 3
+      resolution: 256
+      in_channels: 3
+      out_ch: 3
+      ch: 128
+      ch_mult: [1, 2, 4]  # num_down = len(ch_mult)-1
+      num_res_blocks: 2
+      attn_resolutions: []
+      dropout: 0.0
+
+    optimizer_config:
+      lr: 4.5e-6
+      
+
+image_logger:
+  batch_frequency: 1000
+  max_images: 8
+  increase_log_steps: True

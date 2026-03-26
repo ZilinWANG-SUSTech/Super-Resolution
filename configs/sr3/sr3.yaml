@@ -1,0 +1,74 @@
+# ==============================================================================
+# 🌟 (Global Settings)
+# ==============================================================================
+globals:
+  scale: 4
+  lq_patch_size: 32
+
+# ==============================================================================
+# Global & Trainer Configuration
+# ==============================================================================
+trainer:
+  max_epochs: 300
+  accelerator: "gpu"
+  devices: [0]               # Use list for specific GPUs, e.g., [0, 1]
+  precision: "bf16-mixed"      # FP16 mixed precision for faster training
+  log_every_n_steps: 10
+  check_val_every_n_epoch: 10
+
+
+# ==============================================================================
+# DataModule Configuration (SRDataModule)
+# ==============================================================================
+data:
+  # Path configs (Replace with your actual dataset paths)
+  train_img_dir: "/data/RiceSR2024/SAR/dataset/train/LR_bicubic/X4"
+  train_gt_dir: "/data/RiceSR2024/SAR/dataset/train/GT"
+  val_img_dir: "/data/RiceSR2024/SAR/dataset/val/LR_bicubic/X4"
+  val_gt_dir: "/data/RiceSR2024/SAR/dataset/val/GT"
+  test_img_dir: "/data/RiceSR2024/SAR/dataset/test/LR_bicubic/X4"   # Optional
+  test_gt_dir: "/data/RiceSR2024/SAR/dataset/test/GT"    # Optional
+  
+  # DataLoader configs
+  batch_size: 8
+  num_workers: 8
+  
+  # Image transformation configs
+  lq_patch_size: ${globals.lq_patch_size}   # The size to crop from Low-Res image
+  scale: ${globals.scale}                   # Upsampling factor. HR patch will be 32 * 4 = 128
+
+# ==============================================================================
+# LightningModule Configuration (SRDiffusionModule)
+# ==============================================================================
+model:
+  module_type: "diffusion"
+  eval_crop_border: 4        # Same as scale factor to ignore boundaries during evaluation
+  
+  optimizer_config:
+    learning_rate: 2.0e-4
+    weight_decay: 0.0
+
+  # ----------------------------------------------------------------------------
+  # Learning Rate Scheduler
+  # ----------------------------------------------------------------------------
+  lr_scheduler_config:
+    type: "CosineAnnealingLR"
+    T_max: 300
+    eta_min: 1.0e-7
+
+  # ----------------------------------------------------------------------------
+  # Network
+  # ----------------------------------------------------------------------------
+  network_config:
+    target: "models.SR3.sr3.UNet"
+    params:
+      C: 128
+      steps: 1000
+      channel_expansions: [1, 2, 4, 4, 8, 8]
+    
+
+  diffusion_process_config:
+    target: "models.diffusions.sr3_process.SR3DiffusionProcess"
+    params:
+      train_steps: 1000
+      sample_steps: 100

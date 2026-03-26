@@ -1,0 +1,8 @@
+checkpoints/
+tb_logs/
+taming/
+**/__pycache__/
+.vscode
+kaggle-datasets/
+
+

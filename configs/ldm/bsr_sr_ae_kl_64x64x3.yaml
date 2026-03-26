@@ -1,0 +1,122 @@
+# ==============================================================================
+# 🌟 (Global Settings)
+# ==============================================================================
+globals:
+  scale: 4
+  lq_patch_size: 64
+
+# ==============================================================================
+# Global & Trainer Configuration
+# ==============================================================================
+trainer:
+  max_epochs: 300
+  accelerator: "gpu"
+  devices: [0]               # Use list for specific GPUs, e.g., [0, 1]
+  precision: "bf16-mixed"      # FP16 mixed precision for faster training
+  log_every_n_steps: 10
+  check_val_every_n_epoch: 3
+
+
+# ==============================================================================
+# DataModule Configuration (SRDataModule)
+# ==============================================================================
+data:
+  # Path configs (Replace with your actual dataset paths)
+  train_img_dir: "/data/RiceSR2024/SAR/dataset/train/LR_bicubic/X4"
+  train_gt_dir: "/data/RiceSR2024/SAR/dataset/train/GT"
+  val_img_dir: "/data/RiceSR2024/SAR/dataset/val/LR_bicubic/X4"
+  val_gt_dir: "/data/RiceSR2024/SAR/dataset/val/GT"
+  test_img_dir: "/data/RiceSR2024/SAR/dataset/test/LR_bicubic/X4"   # Optional
+  test_gt_dir: "/data/RiceSR2024/SAR/dataset/test/GT"    # Optional
+  
+  # DataLoader configs
+  batch_size: 4
+  num_workers: 8
+  
+  # Image transformation configs
+  lq_patch_size: ${globals.lq_patch_size}   # The size to crop from Low-Res image
+  scale: ${globals.scale}                   # Upsampling factor. HR patch will be 32 * 4 = 128
+
+  image_range: "-1~1"
+
+# ==============================================================================
+# Ema decay
+# ==============================================================================
+ema_decay: 0.0
+
+# ==============================================================================
+# LightningModule Configuration (SRDiffusionModule)
+# ==============================================================================
+lightning_module:
+
+  target: LatentDiffusion
+  params:
+    linear_start: 0.0015
+    linear_end: 0.0155
+    log_every_t: 100
+    timesteps: 1000
+    loss_type: l2
+    first_stage_key: gt
+    cond_stage_key: img
+    image_size: 64
+    channels: 3
+    concat_mode: true
+    cond_stage_trainable: false
+    
+    unet_config:
+      target: models.ldm.modules.diffusionmodules.openaimodel.UNetModel
+      params:
+        image_size: 64
+        in_channels: 6
+        out_channels: 3
+        model_channels: 160
+        attention_resolutions:
+        - 16
+        - 8
+        num_res_blocks: 2
+        channel_mult:
+        - 1
+        - 2
+        - 2
+        - 4
+        num_head_channels: 32
+
+
+    first_stage_config:
+      target: models.ldm.autoencoder.AutoencoderKL
+      
+      params:
+        monitor: "val/rec_loss"
+        embed_dim: 3
+
+        lossconfig:
+          target: models.ldm.modules.lossses.LPIPSWithDiscriminator
+          params:
+            disc_start: 50001
+            kl_weight: 0.000001
+            disc_weight: 0.5
+
+        ddconfig:
+          double_z: True
+          z_channels: 3
+          resolution: 256
+          in_channels: 3
+          out_ch: 3
+          ch: 128
+          ch_mult: [1, 2, 4]  # num_down = len(ch_mult)-1
+          num_res_blocks: 2
+          attn_resolutions: []
+          dropout: 0.0
+
+        ckpt_path: checkpoints/LDM/autoencoder_kl_64x64x3/best-epoch=284-val_psnr=26.3210.ckpt
+
+    optimizer_config:
+      lr: 1.0e-6
+    
+    cond_stage_config:
+      target: torch.nn.Identity
+
+image_logger:
+  batch_frequency: 5000
+  max_images: 8
+  increase_log_steps: False
