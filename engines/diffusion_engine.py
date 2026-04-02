@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from diffusers import DDPMScheduler, DDIMScheduler
-from utils.metrics import SREvaluator
+from utils.metrics import SREvaluatorPyIQA
 from tqdm import tqdm
 from utils import ENGINE_REGISTRY
 
@@ -40,7 +40,7 @@ class SRDiffusionModule(pl.LightningModule):
         self.lr_scheduler_config = lr_scheduler_config
 
         # Initialize the new SwinIR-style Evaluator
-        self.evaluator = SREvaluator(crop_border=eval_crop_border, test_y_channel=True)
+        self.evaluator = SREvaluatorPyIQA(crop_border=eval_crop_border, test_y_channel=True)
         
         self.net = instantiate_from_config(network_config)
         
@@ -74,24 +74,16 @@ class SRDiffusionModule(pl.LightningModule):
         """
         hr = batch['gt'] * 2.0 - 1.0
         lr = batch['img'] * 2.0 - 1.0
-        bsz = hr.shape[0]
 
         lr_up = F.interpolate(lr, size=hr.shape[-2:], mode='bicubic', align_corners=False)
         
-        if hasattr(self, "net_ema"):
-            preds = self.diffusion_process.sample(
-                net=self.net_ema,
-                shape=hr.shape,
-                device=self.device,
-                cond=lr_up
-            )
-        else:
-            preds = self.diffusion_process.sample(
-                net=self.net,
-                shape=hr.shape,
-                device=self.device,
-                cond=lr_up
-            )
+        net_to_use = self.net_ema if hasattr(self, "net_ema") else self.net        
+        preds = self.diffusion_process.sample(
+            net=net_to_use,
+            shape=hr.shape,
+            device=self.device,
+            cond=lr_up
+        )
 
         preds_01 = torch.clamp((preds + 1.0) / 2.0, 0.0, 1.0)
         hr_01 = torch.clamp((hr + 1.0) / 2.0, 0.0, 1.0)
@@ -100,19 +92,24 @@ class SRDiffusionModule(pl.LightningModule):
         metrics = self.evaluator(preds_01, hr_01)
 
         # Log per-batch metrics
-        self.log(f"{stage}_psnr_step", metrics['psnr'], prog_bar=True, sync_dist=True)
-        self.log(f"{stage}_ssim_step", metrics['ssim'], prog_bar=True, sync_dist=True)
+        self.log(f"{stage}/psnr_step", metrics['psnr'], prog_bar=True, sync_dist=True)
+        self.log(f"{stage}/ssim_step", metrics['ssim'], prog_bar=True, sync_dist=True)
     
     def validation_step(self, batch: dict, batch_idx: int):
         self._shared_eval_step(batch, batch_idx, stage="val")
 
     def on_validation_epoch_end(self):
         """Calculates global average and safely resets states."""
-        # New API: single call to compute() returns a dict
         metrics = self.evaluator.compute()
 
-        self.log("val_psnr", metrics['psnr'], prog_bar=True, sync_dist=True)
-        self.log("val_ssim", metrics['ssim'], prog_bar=True, sync_dist=True)
+        # Dynamically log all metrics to TensorBoard/Wandb
+        for k, v in metrics.items():
+            # NOTE: FID is usually meaningless and too slow for small validation sets.
+            # You can optionally skip logging FID during validation.
+            if k == 'fid':
+                continue
+            # Disable prog_bar for epoch-level detailed metrics to avoid UI clutter
+            self.log(f"val/{k}", v, prog_bar=False, sync_dist=True)
 
         # Unified reset to clear states for the next epoch
         self.evaluator.reset()
@@ -124,8 +121,8 @@ class SRDiffusionModule(pl.LightningModule):
         """Calculates global average and safely resets states."""
         metrics = self.evaluator.compute()
 
-        self.log("test_psnr", metrics['psnr'], prog_bar=True, sync_dist=True)
-        self.log("test_ssim", metrics['ssim'], prog_bar=True, sync_dist=True)
+        for k, v in metrics.items():
+            self.log(f"test/{k}", v, prog_bar=False, sync_dist=True)
 
         self.evaluator.reset()
 

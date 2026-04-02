@@ -195,14 +195,19 @@ class DIRformer(nn.Module):
 
         super(DIRformer, self).__init__()
         self.scale=scale
-        if self.scale == 2:
-            inp_channels =12
-            self.pixel_unshuffle=nn.PixelUnshuffle(2)
-        elif self.scale == 1:
-            inp_channels =48
-            self.pixel_unshuffle=nn.PixelUnshuffle(4)
-        else:
-            inp_channels =3
+        self.unshuffle_factor = max(1, 4 // self.scale)
+        inp_channels = 3 * (self.unshuffle_factor ** 2)
+        if self.unshuffle_factor > 1:
+            self.pixel_unshuffle = nn.PixelUnshuffle(self.unshuffle_factor)
+        self.tail_upsample_factor = self.scale * self.unshuffle_factor
+        # if self.scale == 2:
+        #     inp_channels =12
+        #     self.pixel_unshuffle=nn.PixelUnshuffle(2)
+        # elif self.scale == 1:
+        #     inp_channels =48
+        #     self.pixel_unshuffle=nn.PixelUnshuffle(4)
+        # else:
+        #     inp_channels =3
         self.patch_embed = OverlapPatchEmbed(inp_channels, dim)
 
         self.encoder_level1 = nn.Sequential(*[TransformerBlock(dim=dim, num_heads=heads[0], ffn_expansion_factor=ffn_expansion_factor, bias=bias, LayerNorm_type=LayerNorm_type) for i in range(num_blocks[0])])
@@ -231,7 +236,7 @@ class DIRformer(nn.Module):
         
         self.refinement = nn.Sequential(*[TransformerBlock(dim=int(dim*2**1), num_heads=heads[0], ffn_expansion_factor=ffn_expansion_factor, bias=bias, LayerNorm_type=LayerNorm_type) for i in range(num_refinement_blocks)])
         
-        modules_tail = [common.Upsampler(common.default_conv, 4, int(dim*2**1), act=False),
+        modules_tail = [common.Upsampler(common.default_conv, self.tail_upsample_factor, int(dim*2**1), act=False),
                         common.default_conv(int(dim*2**1), out_channels, 3)]
         self.tail = nn.Sequential(*modules_tail)
         
@@ -281,15 +286,13 @@ class CPEN(nn.Module):
     def __init__(self,n_feats = 64, n_encoder_res = 6,scale=4):
         super(CPEN, self).__init__()
         self.scale=scale
-        if scale == 2:
-            E1=[nn.Conv2d(12, n_feats, kernel_size=3, padding=1),
-                nn.LeakyReLU(0.1, True)]
-        elif scale == 1:
-            E1=[nn.Conv2d(48, n_feats, kernel_size=3, padding=1),
-                nn.LeakyReLU(0.1, True)]
-        else:
-            E1=[nn.Conv2d(3, n_feats, kernel_size=3, padding=1),
-                nn.LeakyReLU(0.1, True)]
+        self.gt_unshuffle_factor = max(4, scale)
+        self.lr_unshuffle_factor = max(1, self.gt_unshuffle_factor // scale)
+        lr_channels = 3 * (self.lr_unshuffle_factor ** 2)
+        E1 = [
+            nn.Conv2d(lr_channels, n_feats, kernel_size=3, padding=1),
+            nn.LeakyReLU(0.1, True)
+        ]
 
         E2=[
             common.ResBlock(
@@ -315,16 +318,16 @@ class CPEN(nn.Module):
             nn.Linear(n_feats * 4, n_feats * 4),
             nn.LeakyReLU(0.1, True)
         )
-        self.pixel_unshuffle = nn.PixelUnshuffle(4)
-        self.pixel_unshufflev2 = nn.PixelUnshuffle(2)
+        # self.pixel_unshuffle = nn.PixelUnshuffle(4)
+        # self.pixel_unshufflev2 = nn.PixelUnshuffle(2)
+        if self.lr_unshuffle_factor > 1:
+            self.lr_unshuffle = nn.PixelUnshuffle(self.lr_unshuffle_factor)
 
     def forward(self, x):
-        if self.scale == 2:
-            feat = self.pixel_unshufflev2(x)
-        elif self.scale == 1:
-            feat = self.pixel_unshuffle(x)
+        if self.lr_unshuffle_factor > 1:
+            feat = self.lr_unshuffle(x)
         else:
-            feat = x  
+            feat = x
         fea = self.E(feat).squeeze(-1).squeeze(-1)
         fea1 = self.mlp(fea)
 

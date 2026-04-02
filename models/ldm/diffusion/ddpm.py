@@ -25,7 +25,7 @@ from models.ldm.autoencoder import VQModelInterface, IdentityFirstStage, Autoenc
 from models.ldm.modules.diffusionmodules.util import make_beta_schedule, extract_into_tensor, noise_like
 from .ddim import DDIMSampler
 from utils import ENGINE_REGISTRY
-from utils.metrics import SREvaluator
+from utils.metrics import SREvaluatorPyIQA
 import torch.nn.functional as F
 
 

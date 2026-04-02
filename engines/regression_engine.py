@@ -2,20 +2,10 @@ import importlib
 import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
-from utils.metrics import SREvaluator
+from utils.metrics import SREvaluatorPyIQA
 from utils import ENGINE_REGISTRY, build_network
+import os
 
-
-def instantiate_from_config(config: dict):
-    if "target" not in config:
-        raise KeyError("Expected key 'target' to instantiate from config.")
-    
-    module_path, class_name = config["target"].rsplit(".", 1)
-    module = importlib.import_module(module_path)
-    cls = getattr(module, class_name)
-    
-    params = config.get("params", {})
-    return cls(**params)
 
 @ENGINE_REGISTRY.register()
 class SRRegressionModule(pl.LightningModule):
@@ -32,17 +22,11 @@ class SRRegressionModule(pl.LightningModule):
         self.optimizer_config = optimizer_config
         self.lr_scheduler_config = lr_scheduler_config
 
-        self.evaluator = SREvaluator(crop_border=eval_crop_border, test_y_channel=True)
-        # self.net = instantiate_from_config(network_config)
+        self.evaluator = SREvaluatorPyIQA(crop_border=eval_crop_border, test_y_channel=True)
         self.net = build_network(network_config)
         
-        # img_size = network_config['params']['img_size']
-        # self.example_input_array = torch.randn(1, 3, img_size, img_size)
-        # self.example_input_array = (torch.randn(1, 3, img_size, img_size),torch.randn(1, 3, img_size, img_size))
 
     def forward(self, lr_img: torch.Tensor) -> torch.Tensor:
-        # Directly output HR prediction
-        # return self.net(lr_img, gt_img)
         pass
 
     def training_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
@@ -57,7 +41,12 @@ class SRRegressionModule(pl.LightningModule):
         # L1 Loss is mathematically strictly preferred over MSE for PSNR/SSIM optimization in standard SR
         loss = F.l1_loss(preds, hr)
         
+        with torch.no_grad():
+            preds_eval = torch.clamp(preds.detach(), 0.0, 1.0)
+            hr_eval = torch.clamp(hr.detach(), 0.0, 1.0)
+            train_psnr = self.evaluator.psnr(preds_eval, hr_eval).mean().item()
         self.log("train_loss", loss, prog_bar=True, sync_dist=True)
+        self.log("train/psnr_epoch", train_psnr, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
         return loss
 
     def _shared_eval_step(self, batch: dict, batch_idx: int, stage: str):
@@ -71,17 +60,21 @@ class SRRegressionModule(pl.LightningModule):
                 output = self.net(lr)
             preds = output.sample if hasattr(output, 'sample') else output
 
-        metrics = self.evaluator(preds, hr)
-        self.log(f"{stage}_psnr_step", metrics['psnr'], prog_bar=True, sync_dist=True)
-        self.log(f"{stage}_ssim_step", metrics['ssim'], prog_bar=True, sync_dist=True)
+        self.evaluator(preds, hr)
 
     def validation_step(self, batch: dict, batch_idx: int):
         self._shared_eval_step(batch, batch_idx, stage="val")
 
     def on_validation_epoch_end(self):
         metrics = self.evaluator.compute()
-        self.log("val_psnr", metrics['psnr'], prog_bar=True, sync_dist=True)
-        self.log("val_ssim", metrics['ssim'], prog_bar=True, sync_dist=True)
+        # Dynamically log all metrics to TensorBoard/Wandb
+        for k, v in metrics.items():
+            # NOTE: FID is usually meaningless and too slow for small validation sets.
+            # You can optionally skip logging FID during validation.
+            if k == 'fid':
+                continue
+            # Disable prog_bar for epoch-level detailed metrics to avoid UI clutter
+            self.log(f"val/{k}", v, prog_bar=True, sync_dist=True)
         self.evaluator.reset()
 
     def test_step(self, batch: dict, batch_idx:  int):
@@ -89,8 +82,12 @@ class SRRegressionModule(pl.LightningModule):
 
     def on_test_epoch_end(self):
         metrics = self.evaluator.compute()
-        self.log("test_psnr", metrics['psnr'], prog_bar=True, sync_dist=True)
-        self.log("test_ssim", metrics['ssim'], prog_bar=True, sync_dist=True)
+        
+        for k, v in metrics.items():
+            self.log(f"test/{k}", v, prog_bar=False, sync_dist=True)
+        save_dir = self.logger.log_dir
+        save_filename = os.path.join(save_dir, "test_results_summary.xlsx")
+        self.evaluator.save_to_excel(save_filename, metrics=metrics)
         self.evaluator.reset()
 
     def configure_optimizers(self):
@@ -136,3 +133,43 @@ class SRRegressionModule(pl.LightningModule):
             preds = model(lr_tensor)
 
         return torch.clamp(preds, 0.0, 1.0)
+
+    @torch.no_grad()
+    def log_images(self, batch: dict, N: int = 4, **kwargs) -> dict:
+        """
+        Extracts image triplets (LR, Prediction, HR) and groups them by filename.
+        Args:
+            batch: The validation or training batch.
+            N: Maximum number of images to log from the batch.
+        """
+        log = dict()
+        
+        lr = batch['img'][:N]
+        hr = batch['gt'][:N]
+        actual_N = lr.shape[0]
+
+        # 1. Safely extract image filenames. If dataloader doesn't provide 'name', use fallbacks.
+        img_names = batch.get('name', [f"image_{i}" for i in range(actual_N)])
+        img_names = img_names[:N]
+
+        # 2. Get model predictions
+        net_to_use = self.net_ema if hasattr(self, "net_ema") else self.net
+        output = net_to_use(lr)
+        preds = output.sample if hasattr(output, 'sample') else output
+
+        # 3. Upsample LR image to match HR/SR dimensions
+        lr_up = F.interpolate(lr, size=hr.shape[-2:], mode='bicubic', align_corners=False)
+
+        # 4. Clamp strictly to [0, 1]
+        lr_up = torch.clamp(lr_up, 0.0, 1.0)
+        preds = torch.clamp(preds, 0.0, 1.0)
+        hr = torch.clamp(hr, 0.0, 1.0)
+
+        # 5. Group by image name. 
+        # We create a triplet tensor of shape (3, C, H, W) for each image.
+        for i, name in enumerate(img_names):
+            # The order here defines how they appear from left to right: [LR, Prediction, HR]
+            triplet = torch.stack([lr_up[i], preds[i], hr[i]], dim=0)
+            log[name] = triplet
+
+        return log

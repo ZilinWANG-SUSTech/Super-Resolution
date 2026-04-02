@@ -5,3 +5,4 @@ from models.ldm.autoencoder import AutoencoderKL
 from models.swinir.swinir import SwinIR
 from .ldm import LatentDiffusion
 from models.mambair.mambair import MambaIR
+from models.mambair.mambairv2 import MambaIRv2

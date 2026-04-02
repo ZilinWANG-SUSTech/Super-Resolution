@@ -2,8 +2,8 @@
 # 🌟 (Global Settings)
 # ==============================================================================
 globals:
-  scale: 4
-  lq_patch_size: 32
+  scale: 16
+  lq_patch_size: 24
 
 # ==============================================================================
 # Global & Trainer Configuration
@@ -22,12 +22,12 @@ trainer:
 # ==============================================================================
 data:
   # Path configs (Replace with your actual dataset paths)
-  train_img_dir: "/data/RiceSR2024/SAR/dataset/train/LR_bicubic/X4"
-  train_gt_dir: "/data/RiceSR2024/SAR/dataset/train/GT"
-  val_img_dir: "/data/RiceSR2024/SAR/dataset/val/LR_bicubic/X4"
-  val_gt_dir: "/data/RiceSR2024/SAR/dataset/val/GT"
-  test_img_dir: "/data/RiceSR2024/SAR/dataset/test/LR_bicubic/X4"   # Optional
-  test_gt_dir: "/data/RiceSR2024/SAR/dataset/test/GT"    # Optional
+  train_img_dir: "/data/RiceSR2024/RGB-SAR/dataset/train/LR_bicubic"
+  train_gt_dir: "/data/RiceSR2024/RGB-SAR/dataset/train/GT"
+  val_img_dir: "/data/RiceSR2024/RGB-SAR/dataset/val/LR_bicubic"
+  val_gt_dir: "/data/RiceSR2024/RGB-SAR/dataset/val/GT"
+  test_img_dir: "/data/RiceSR2024/RGB-SAR/dataset/test/LR_bicubic"   # Optional
+  test_gt_dir: "/data/RiceSR2024/RGB-SAR/dataset/test/GT"    # Optional
   
   # DataLoader configs
   batch_size: 16
@@ -70,16 +70,28 @@ lightning_module:
     # Network
     # ----------------------------------------------------------------------------
     network_config:
-      target: "SwinIR"
+      target: MambaIRv2
       params:
+        upscale: ${globals.scale}
         in_chans: 3
         img_size: ${globals.lq_patch_size}
-        upscale: ${globals.scale}
-        window_size: 8
-        img_range: 1.0
-        embed_dim: 180
-        depths: [6, 6, 6, 6, 6, 6]
-        num_heads: [6, 6, 6, 6, 6, 6]
-        mlp_ratio: 2
+        img_range: 1.
+        embed_dim: 174
+        d_state: 16
+        depths: [6, 6, 6,6,6,6]
+        num_heads: [6,6,6,6,6,6]
+        window_size: 16
+        inner_rank: 64
+        num_tokens: 128
+        convffn_kernel_size: 5
+        mlp_ratio: 2.
         upsampler: 'pixelshuffle'
-        resi_connection: "1conv"
+        resi_connection: '1conv'
+
+
+# ==============================================================================
+# Image Logger
+# ==============================================================================
+image_logger:
+  log_batch_freq: 1
+  max_images: 8

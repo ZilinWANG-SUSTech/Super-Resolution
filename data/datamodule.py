@@ -2,6 +2,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from .dataset import BasicSRDataset
 from .transforms import PairedTransform
+import os
 
 class SRDataModule(pl.LightningDataModule):
     def __init__(
@@ -32,11 +33,11 @@ class SRDataModule(pl.LightningDataModule):
             scale (int): Upsampling scale factor.
         """
         super().__init__()
-        self.train_img_dir = train_img_dir
+        self.train_img_dir = os.path.join(train_img_dir, f"X{scale}")
         self.train_gt_dir = train_gt_dir
-        self.val_img_dir = val_img_dir
+        self.val_img_dir = os.path.join(val_img_dir, f"X{scale}")
         self.val_gt_dir = val_gt_dir
-        self.test_img_dir = test_img_dir
+        self.test_img_dir = os.path.join(test_img_dir, f"X{scale}")
         self.test_gt_dir = test_gt_dir
         
         self.batch_size = batch_size

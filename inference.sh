@@ -16,30 +16,51 @@
 # --input_dir /data/RiceSR2024/Set5/LRbicx4 \
 # --output_dir /data/RiceSR2024/Data_Processing/inference/Set5/DiffIR/S2/predict-test_dataset
 
-python predict.py \
--c configs/ldm/bsr_sr_ae_kl_64x64x3.yaml \
---ckpt checkpoints/LDM/latent_diffusion/best-epoch=266-val_psnr=24.1217.ckpt \
---input_dir /data/RiceSR2024/Set5/LRbicx4 \
---output_dir /data/RiceSR2024/Data_Processing/inference/Set5/LDM/predict-test_dataset
+# python predict.py \
+# -c configs/ldm/bsr_sr_ae_kl_64x64x3.yaml \
+# --ckpt checkpoints/LDM/latent_diffusion/best-epoch=266-val_psnr=24.1217.ckpt \
+# --input_dir /data/RiceSR2024/Set5/LRbicx4 \
+# --output_dir /data/RiceSR2024/Data_Processing/inference/Set5/LDM/predict-test_dataset
 
 
 # predict train
 # python predict.py \
 # -c configs/swinir/swinir-classical.yaml \
-# --ckpt checkpoints/SwinIR/best-epoch=014-val_psnr=26.1698.ckpt \
+# --ckpt checkpoints/SwinIR-V2/best-epoch=080-val_psnr=26.1691.ckpt \
 # --input_dir /data/RiceSR2024/SAR/dataset/train/LR_bicubic/X4 \
-# --output_dir /data/RiceSR2024/Data_Processing/inference/SAR/SwinIR/predict-train_dataset
+# --output_dir /data/RiceSR2024/Data_Processing/inference/SAR/SwinIR-V2/predict-train_dataset
 
 # predict test
 # python predict.py \
 # -c configs/swinir/swinir-classical.yaml \
-# --ckpt checkpoints/SwinIR/best-epoch=014-val_psnr=26.1698.ckpt \
+# --ckpt checkpoints/SwinIR-V2/best-epoch=080-val_psnr=26.1691.ckpt \
 # --input_dir /data/RiceSR2024/SAR/dataset/test/LR_bicubic/X4 \
-# --output_dir /data/RiceSR2024/Data_Processing/inference/SAR/SwinIR/predict-test_dataset
+# --output_dir /data/RiceSR2024/Data_Processing/inference/SAR/SwinIR-V2/predict-test_dataset
 
 # predict set5
 # python predict.py \
 # -c configs/swinir/swinir-classical.yaml \
-# --ckpt checkpoints/SwinIR/best-epoch=014-val_psnr=26.1698.ckpt \
+# --ckpt checkpoints/SwinIR-V2/best-epoch=080-val_psnr=26.1691.ckpt \
 # --input_dir /data/RiceSR2024/Set5/LRbicx4 \
-# --output_dir /data/RiceSR2024/Data_Processing/inference/Set5/SwinIR/predict-test_dataset
+# --output_dir /data/RiceSR2024/Data_Processing/inference/Set5/SwinIR-V2/predict-test_dataset
+
+# predict train
+# python predict.py \
+# -c configs/mambair/mambair.yaml \
+# --ckpt checkpoints/MambaIR-v2/best-epoch=044-val_psnr=26.1289.ckpt \
+# --input_dir /data/RiceSR2024/SAR/dataset/train/LR_bicubic/X4 \
+# --output_dir /data/RiceSR2024/Data_Processing/inference/SAR/MambaIR-V2/predict-train_dataset
+
+# predict test
+# python predict.py \
+# -c configs/mambair/mambair.yaml \
+# --ckpt checkpoints/MambaIR-v2/best-epoch=044-val_psnr=26.1289.ckpt \
+# --input_dir /data/RiceSR2024/SAR/dataset/test/LR_bicubic/X4 \
+# --output_dir /data/RiceSR2024/Data_Processing/inference/SAR/MambaIR-V2/predict-test_dataset
+
+# # predict set5
+python predict.py \
+-c configs/mambair/mambair.yaml \ 
+--ckpt checkpoints/MambaIR/best-epoch=020-val_psnr=26.1666.ckpt \
+--input_dir /data/RiceSR2024/Set5/LRbicx4 \
+--output_dir /data/RiceSR2024/Data_Processing/inference/Set5/MambaIR/predict-test_dataset

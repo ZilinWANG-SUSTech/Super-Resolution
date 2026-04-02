@@ -10,6 +10,7 @@ import models
 import engines
 from utils import EMACallback, build_engine_cls
 import torch
+from pytorch_lightning.loggers import TensorBoardLogger
 
 
 def parse_args():
@@ -17,6 +18,10 @@ def parse_args():
     parser.add_argument(
         "-c", "--config", type=str, default="configs/default_train.yaml",
         help="Path to the YAML configuration file."
+    )
+    parser.add_argument(
+        "-n", "--name", type=str, default="default_exp",
+        help="Name of the experiment. Used for logging and saving checkpoints."
     )
     parser.add_argument(
         "--ckpt", type=str, required=True,
@@ -51,6 +56,8 @@ def main():
     module = build_engine_cls(lightning_cfg)
     module = module(**lightning_cfg.get('params', {}))
     # module = module.load_from_checkpoint(args.ckpt, **lightning_cfg['params'])
+    
+    logger = TensorBoardLogger(save_dir="logs", name=args.name)
 
     # load ckpt
     print(f"Loading checkpoint from {args.ckpt}...")
@@ -75,7 +82,7 @@ def main():
     trainer = pl.Trainer(
         accelerator="gpu",
         devices=args.gpus,
-        logger=False, # No need to log to TensorBoard for a simple test run
+        logger=logger,
     )
 
     # 6. Run Evaluation

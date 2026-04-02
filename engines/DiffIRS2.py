@@ -2,11 +2,11 @@ import importlib
 import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
-from utils.metrics import SREvaluator
+from utils.metrics import SREvaluatorPyIQA
 from torch import nn
 from utils import ENGINE_REGISTRY, build_network
 from .DiffIRS1 import DiffIRS1LightningModule
-
+import os
 
 class KDLoss(nn.Module):
     """
@@ -63,7 +63,7 @@ class DiffIRS2LightningModule(pl.LightningModule):
 
         self.cri_pix = torch.nn.L1Loss() # Replace with your config-based instantiation
         self.cri_kd = KDLoss()  # Replace with your config-based instantiation
-        self.evaluator = SREvaluator(crop_border=eval_crop_border, test_y_channel=True)
+        self.evaluator = SREvaluatorPyIQA(crop_border=eval_crop_border, test_y_channel=True)
 
         s1_pretrain_path = train_config['pretrain_network_S1']
         if s1_pretrain_path:
@@ -175,23 +175,42 @@ class DiffIRS2LightningModule(pl.LightningModule):
         hr = batch['gt']
         lr = batch['img']        
 
+        # Calculate padding needed to make LR dimensions multiples of 16
+        _, _, h_lr, w_lr = lr.size()
+        scale = hr.size(2) // h_lr
+        pad_mult = 16
+        pad_h = (pad_mult - h_lr % pad_mult) % pad_mult
+        pad_w = (pad_mult - w_lr % pad_mult) % pad_mult
+        # Apply 'reflect' padding if needed
+        if pad_h > 0 or pad_w > 0:
+            lr_padded = F.pad(lr, (0, pad_w, 0, pad_h), mode='reflect')
+            hr_padded = F.pad(hr, (0, pad_w * scale, 0, pad_h * scale), mode='reflect')
+        else:
+            lr_padded = lr
+            hr_padded = hr
+
         # Select EMA model if available
         model = self.net_ema if hasattr(self, "net_ema") else self.net
 
-        preds = model(lr) 
+        preds = model(lr_padded) 
         
-        metrics = self.evaluator(preds, hr)
+        if pad_h > 0 or pad_w > 0:
+            preds = preds[..., :hr.size(2), :hr.size(3)]
 
-        self.log(f"{stage}_psnr_step", metrics['psnr'], prog_bar=True, sync_dist=True)
-        self.log(f"{stage}_ssim_step", metrics['ssim'], prog_bar=True, sync_dist=True)
+        self.evaluator(preds, hr)
 
     def validation_step(self, batch: dict, batch_idx: int):
         self._shared_eval_step(batch, batch_idx, stage="val")
 
     def on_validation_epoch_end(self):
         metrics = self.evaluator.compute()
-        self.log("val_psnr", metrics['psnr'], prog_bar=True, sync_dist=True)
-        self.log("val_ssim", metrics['ssim'], prog_bar=True, sync_dist=True)
+        for k, v in metrics.items():
+            # NOTE: FID is usually meaningless and too slow for small validation sets.
+            # You can optionally skip logging FID during validation.
+            if k == 'fid':
+                continue
+            # Disable prog_bar for epoch-level detailed metrics to avoid UI clutter
+            self.log(f"val/{k}", v, prog_bar=True, sync_dist=True)
         self.evaluator.reset()
 
     def test_step(self, batch: dict, batch_idx:  int):
@@ -199,8 +218,11 @@ class DiffIRS2LightningModule(pl.LightningModule):
 
     def on_test_epoch_end(self):
         metrics = self.evaluator.compute()
-        self.log("test_psnr", metrics['psnr'], prog_bar=True, sync_dist=True)
-        self.log("test_ssim", metrics['ssim'], prog_bar=True, sync_dist=True)
+        for k, v in metrics.items():
+            self.log(f"test/{k}", v, prog_bar=False, sync_dist=True)
+        save_dir = self.logger.log_dir
+        save_filename = os.path.join(save_dir, "test_results_summary.xlsx")
+        self.evaluator.save_to_excel(save_filename, metrics=metrics)
         self.evaluator.reset()
     
     @torch.no_grad()
@@ -225,3 +247,63 @@ class DiffIRS2LightningModule(pl.LightningModule):
             preds = model(lr_tensor)
 
         return torch.clamp(preds, 0.0, 1.0)
+
+    @torch.no_grad()
+    def log_images(self, batch: dict, N: int = 4, **kwargs) -> dict:
+        """
+        Extracts image triplets (LR, Prediction, HR) and groups them by filename.
+        Args:
+            batch: The validation or training batch.
+            N: Maximum number of images to log from the batch.
+        """
+        log = dict()
+        
+        # 1. Safely slice up to N images
+        lr = batch['img'][:N]
+        hr = batch['gt'][:N]
+        
+        # CRITICAL FIX: Find the ACTUAL number of images we got 
+        # (It might be 2 even if N is 4, e.g., at the end of an epoch)
+        actual_N = lr.shape[0]
+        
+        # 2. Extract or generate exactly 'actual_N' names to prevent IndexError
+        img_names = batch.get('name', [f"image_{i}" for i in range(actual_N)])
+        img_names = img_names[:actual_N]
+
+                # Calculate padding needed to make LR dimensions multiples of 16
+        _, _, h_lr, w_lr = lr.size()
+        scale = hr.size(2) // h_lr
+        pad_mult = 16
+        pad_h = (pad_mult - h_lr % pad_mult) % pad_mult
+        pad_w = (pad_mult - w_lr % pad_mult) % pad_mult
+        # Apply 'reflect' padding if needed
+        if pad_h > 0 or pad_w > 0:
+            lr_padded = F.pad(lr, (0, pad_w, 0, pad_h), mode='reflect')
+            hr_padded = F.pad(hr, (0, pad_w * scale, 0, pad_h * scale), mode='reflect')
+        else:
+            lr_padded = lr
+            hr_padded = hr
+
+        # 3. Get model predictions
+        net_to_use = self.net_ema if hasattr(self, "net_ema") else self.net
+        output = net_to_use(lr_padded, hr_padded)
+        preds = output.sample if hasattr(output, 'sample') else output
+
+        # 4. Crop predictions back to match original unpadded dimensions
+        if pad_h > 0 or pad_w > 0:
+            preds = preds[..., :hr.size(2), :hr.size(3)]
+            
+        # 4. Upsample LR image to match HR/SR dimensions
+        lr_up = F.interpolate(lr, size=hr.shape[-2:], mode='bicubic', align_corners=False)
+
+        # 5. Clamp strictly to [0, 1]
+        lr_up = torch.clamp(lr_up, 0.0, 1.0)
+        preds = torch.clamp(preds, 0.0, 1.0)
+        hr = torch.clamp(hr, 0.0, 1.0)
+
+        # 6. Group by image name. Loop will now safely run exactly 'actual_N' times.
+        for i, name in enumerate(img_names):
+            triplet = torch.stack([lr_up[i], preds[i], hr[i]], dim=0)
+            log[name] = triplet
+
+        return log

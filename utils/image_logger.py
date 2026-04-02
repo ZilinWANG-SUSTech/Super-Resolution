@@ -114,3 +114,44 @@ class ImageLogger(Callback):
         if hasattr(pl_module, 'calibrate_grad_norm'):
             if (pl_module.calibrate_grad_norm and batch_idx % 25 == 0) and batch_idx > 0:
                 self.log_gradients(trainer, pl_module, batch_idx=batch_idx)
+
+
+class SRImageLogger(Callback):
+    def __init__(self, max_images: int = 8, log_batch_freq: int = 1):
+        """
+        Args:
+            max_images (int): Number of images to display in the grid.
+            log_batch_freq (int): Log images every N batches during validation. 
+                                  (Set to 1 if you want to log the first batch of every val epoch).
+        """
+        super().__init__()
+        self.max_images = max_images
+        self.log_batch_freq = log_batch_freq
+
+    @rank_zero_only
+    def on_validation_batch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule, outputs, batch, batch_idx, dataloader_idx=0):
+        """Logs image triplets grouped by their original filenames."""
+        
+        if batch_idx % self.log_batch_freq == 0:
+            if hasattr(pl_module, "log_images") and callable(pl_module.log_images):
+                
+                # Dictionary mapping: { "filename.png": tensor(3, C, H, W) }
+                images_dict = pl_module.log_images(batch, N=self.max_images)
+
+                for img_name, triplet in images_dict.items():
+                    # Move triplet to CPU
+                    triplet = triplet.detach().cpu()
+                    
+                    # Create a grid. nrow=3 puts the 3 images (LR, Pred, HR) in a single row.
+                    # padding=2 and pad_value=1.0 adds a white border between the images for clarity.
+                    grid = torchvision.utils.make_grid(triplet, nrow=3, padding=2, pad_value=1.0)
+                    
+                    # Tag format: val_visuals/filename_[LR_Pred_HR]
+                    # This clearly indicates the visual order in the TensorBoard UI.
+                    tag = f"val_visuals/{img_name}_[LR_Pred_HR]"
+                    
+                    pl_module.logger.experiment.add_image(
+                        tag,
+                        grid,
+                        global_step=pl_module.global_step
+                    )

@@ -3,7 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 import pytorch_lightning as pl
 from utils import ENGINE_REGISTRY, build_network
-from utils.metrics import SREvaluator
+from utils.metrics import SREvaluatorPyIQA
 from basicsr.losses import build_loss
 from basicsr.utils.registry import LOSS_REGISTRY
 

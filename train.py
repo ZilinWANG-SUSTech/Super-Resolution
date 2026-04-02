@@ -9,7 +9,7 @@ from omegaconf import OmegaConf
 from data.datamodule import SRDataModule
 import models
 import engines
-from utils import EMACallback, build_engine, ImageLogger
+from utils import EMACallback, build_engine, ImageLogger, SRImageLogger
 
 
 def parse_args():
@@ -64,8 +64,8 @@ def main():
 
 
     # 6. Setup Logger
-    logger = TensorBoardLogger(save_dir="tb_logs", name=args.name)
-
+    logger = TensorBoardLogger(save_dir="logs", name=args.name)
+    
     # 7. Setup Callbacks
     # Save the best model based on the validation PSNR
 
@@ -79,9 +79,9 @@ def main():
 
     # TODO: SR
     checkpoint_callback = ModelCheckpoint(
-        dirpath=os.path.join("checkpoints", args.name),
-        filename="best-{epoch:03d}-{val_psnr:.4f}",
-        monitor="val_psnr",
+        dirpath=logger.log_dir,
+        filename="best-{epoch:03d}-{val/psnr:.4f}",
+        monitor="val/psnr",
         mode="max",
         save_top_k=3,           # Keep the top 3 best models
         save_last=True,         # Always save the latest model to easily resume
@@ -101,7 +101,7 @@ def main():
     
     # TODO: SR
     early_stop_callback = EarlyStopping(
-        monitor="val_psnr", 
+        monitor="val/psnr", 
         min_delta=0, 
         patience=40,  # 20 Val = 60 Epoch
         mode="max", 
@@ -112,7 +112,7 @@ def main():
 
     image_logger_cfg = config.get("image_logger", {})
     if image_logger_cfg:
-        img_logger = ImageLogger(
+        img_logger = SRImageLogger(
             **image_logger_cfg
         )
     else:

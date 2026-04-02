@@ -10,7 +10,7 @@ from .modules.distributions.distributions import DiagonalGaussianDistribution
 import numpy as np
 from packaging import version
 from taming.modules.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
-from utils.metrics import SREvaluator
+from utils.metrics import SREvaluatorPyIQA
 
 
 
