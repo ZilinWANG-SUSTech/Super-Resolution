@@ -1,0 +1,87 @@
+# ==============================================================================
+# 🌟 (Global Settings)
+# ==============================================================================
+globals:
+  scale: 4
+  lq_patch_size: 64
+
+# ==============================================================================
+# Global & Trainer Configuration
+# ==============================================================================
+trainer:
+  max_epochs: 300
+  accelerator: "gpu"
+  devices: [0]               # Use list for specific GPUs, e.g., [0, 1]
+  precision: "bf16-mixed"      # FP16 mixed precision for faster training
+  log_every_n_steps: 10
+  check_val_every_n_epoch: 3
+
+
+# ==============================================================================
+# DataModule Configuration (SRDataModule)
+# ==============================================================================
+data:
+  # Path configs (Replace with your actual dataset paths)
+  train_img_dir: "/data/RiceSR2024/RGB-SAR/dataset/train/LR_bicubic"
+  train_gt_dir: "/data/RiceSR2024/RGB-SAR/dataset/train/GT"
+  val_img_dir: "/data/RiceSR2024/RGB-SAR/dataset/val/LR_bicubic"
+  val_gt_dir: "/data/RiceSR2024/RGB-SAR/dataset/val/GT"
+  test_img_dir: "/data/RiceSR2024/RGB-SAR/dataset/test/LR_bicubic"   # Optional
+  test_gt_dir: "/data/RiceSR2024/RGB-SAR/dataset/test/GT"    # Optional
+  
+  # DataLoader configs
+  batch_size: 16
+  num_workers: 8
+  
+  # Image transformation configs
+  lq_patch_size: ${globals.lq_patch_size}   # The size to crop from Low-Res image
+  scale: ${globals.scale}                   # Upsampling factor. HR patch will be 32 * 4 = 128
+
+  image_range: "0~1"
+
+# ==============================================================================
+# Ema decay
+# ==============================================================================
+ema_decay: 0.999
+
+
+# ==============================================================================
+# LightningModule Configuration (SRDiffusionModule)
+# ==============================================================================
+lightning_module:
+  target: SRRegressionModule
+  params:
+    eval_crop_border: ${globals.scale}        # Same as scale factor to ignore boundaries during evaluation
+
+    optimizer_config:
+      lr: 2.0e-4
+      weight_decay: 0.0
+      betas: [0.9, 0.99]
+
+    # ----------------------------------------------------------------------------
+    # Learning Rate Scheduler
+    # ----------------------------------------------------------------------------
+    lr_scheduler_config:
+      type: "MultiStepLR"
+      milestones: [300]
+      gamma: 0.5
+
+    # ----------------------------------------------------------------------------
+    # Network
+    # ----------------------------------------------------------------------------
+    network_config:
+      target: RRDBNet
+      params:
+        num_in_ch: 3
+        num_out_ch: 3
+        num_feat: 64
+        num_block: 23
+        num_grow_ch: 32
+        scale: ${globals.scale}
+
+# ==============================================================================
+# Image Logger
+# ==============================================================================
+image_logger:
+  log_batch_freq: 1
+  max_images: 8

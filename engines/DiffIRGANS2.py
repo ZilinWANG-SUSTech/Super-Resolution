@@ -6,6 +6,8 @@ from utils import ENGINE_REGISTRY, build_network
 from utils.metrics import SREvaluatorPyIQA
 from basicsr.losses import build_loss
 from basicsr.utils.registry import LOSS_REGISTRY
+import os
+from collections import OrderedDict
 
 
 @LOSS_REGISTRY.register()
@@ -41,7 +43,14 @@ class KDLoss(nn.Module):
 
 @ENGINE_REGISTRY.register()
 class DiffIRGANS2LightningModule(pl.LightningModule):
-    def __init__(self, train_config, network_config_g, network_config_d, network_config_s1, eval_crop_border: int = 4, mg_size: int = None,):
+    def __init__(self, train_config, 
+                 network_config_g, 
+                 network_config_d, 
+                 network_config_s1,
+                 pretrain_s1_path: str,
+                 pretrain_s2_path: str,
+                 eval_crop_border: int = 4, 
+                 ):
         super().__init__()
         self.save_hyperparameters()
         
@@ -55,19 +64,25 @@ class DiffIRGANS2LightningModule(pl.LightningModule):
         # 1. Initialize networks (Generator, Discriminator, S1 Teacher)
         # ==========================================
         self.net = build_network(network_config_g)
-        self.net_ema = build_network(network_config_g)
         self.net_d = build_network(network_config_d)
         
         # S1 acts solely as a Teacher to extract priors and is excluded from gradient updates
         self.net_g_S1 = build_network(network_config_s1)
         self.model_Es1 = self.net_g_S1.E # Assuming the feature extractor of S1 is named 'E'
 
-        self.evaluator = SREvaluator(crop_border=eval_crop_border, test_y_channel=True)
+        self.evaluator = SREvaluatorPyIQA(crop_border=eval_crop_border, test_y_channel=True)
 
         # ==========================================
-        # 2. Load pretrained weights (using our bulletproof logic)
+        # 2. Load pretrained weights elegantly
         # ==========================================
-        self._load_pretrained_weights()
+        if pretrain_s1_path:
+            self._load_network_weights(self.model_Es1, pretrain_s1_path, is_teacher=True)
+            # Lock the teacher weights strictly
+            self.model_Es1.eval()
+            self.model_Es1.requires_grad_(False)
+
+        if pretrain_s2_path:
+            self._load_network_weights(self.net, pretrain_s2_path, is_teacher=False)
 
         # ==========================================
         # 3. Initialize loss functions
@@ -81,48 +96,46 @@ class DiffIRGANS2LightningModule(pl.LightningModule):
         self.net_d_iters = train_config.get('net_d_iters', 1)
         self.net_d_init_iters = train_config.get('net_d_init_iters', 0)
 
-    def _load_pretrained_weights(self):
+    def _load_network_weights(self, target_model: nn.Module, ckpt_path: str, is_teacher: bool = False):
         """
-        Reuse the EMA extraction and Shape interception logic we refined earlier.
-        Omitted here for brevity. Please paste the S1 and S2 pretrained loading code directly here.
-        Also remember: freeze self.model_Es1 completely!
+        A unified, elegant method to load checkpoint weights, prioritizing EMA weights,
+        stripping PyTorch Lightning prefixes, and filtering specific sub-modules.
         """
-        s1_pretrain_path = self.hparams.train_config['pretrain_network_S1']
-        if s1_pretrain_path:
-            print(f"Loading pretrained weights from {s1_pretrain_path}...")
-            ckpt = torch.load(s1_pretrain_path, map_location="cpu")
-            if "params_ema" in ckpt:
-                print(" ✅ Found 'params_ema'! Using EMA weights for initialization (Highly Recommended).")
-                source_dict = ckpt["params_ema"]
-            else:
-                print(" ⚠️ 'params_ema' not found. Falling back to default 'state_dict'.")
-                source_dict = ckpt["state_dict"]
-            clean_dict = {}
-            for k, v in source_dict.items():
-                k_clean = k.replace("net_ema.", "").replace("net.", "")
-                clean_dict[k_clean] = v
-            es1_dict = {k.replace("E.", "", 1): v for k, v in clean_dict.items() if k.startswith("E.")}
-
-            self.model_Es1.load_state_dict(es1_dict, strict=True)
-            self.model_Es1.eval()
-            self.model_Es1.requires_grad_(False)
+        if not os.path.exists(ckpt_path):
+            raise FileNotFoundError(f"Checkpoint not found at: {ckpt_path}")
+            
+        print(f"==================================================")
+        print(f"🚀 Loading weights from: {ckpt_path}")
         
-        s2_pretrain_path = self.hparams.train_config['pretrain_network_S2']
-        if s2_pretrain_path:
-            print(f"Loading pretrained weights from {s2_pretrain_path}...")
-            ckpt = torch.load(s2_pretrain_path, map_location="cpu")
-            if "params_ema" in ckpt:
-                print(" ✅ Found 'params_ema'! Using EMA weights for initialization (Highly Recommended).")
-                source_dict = ckpt["params_ema"]
+        ckpt = torch.load(ckpt_path, map_location="cpu")
+        
+        # Prioritize EMA weights if they exist
+        if "params_ema" in ckpt:
+            print(" ✅ Source: 'params_ema' (EMA weights selected)")
+            source_dict = ckpt["params_ema"]
+        else:
+            print(" ⚠️ Source: 'state_dict' (EMA not found, falling back)")
+            source_dict = ckpt.get("state_dict", ckpt)
+            
+        clean_dict = OrderedDict()
+        for k, v in source_dict.items():
+            # Strip standard PyTorch Lightning prefixes
+            k_clean = k.replace("net_ema.", "").replace("net.", "")
+            
+            # Apply Teacher (S1) specific filtering rules
+            if is_teacher:
+                if k_clean.startswith("E."):
+                    k_clean = k_clean.replace("E.", "", 1)
+                    clean_dict[k_clean] = v
             else:
-                print(" ⚠️ 'params_ema' not found. Falling back to default 'state_dict'.")
-                source_dict = ckpt["state_dict"]
-            clean_dict = {}
-            for k, v in source_dict.items():
-                k_clean = k.replace("net_ema.", "").replace("net.", "")
                 clean_dict[k_clean] = v
 
-            self.net.load_state_dict(clean_dict, strict=True)
+        missing_keys, unexpected_keys = target_model.load_state_dict(clean_dict, strict=True)
+        if missing_keys:
+            print(f" ⚠️ Missing keys: {len(missing_keys)}")
+        if unexpected_keys:
+            print(f" ⚠️ Unexpected keys: {len(unexpected_keys)}")
+        print(f"==================================================")
 
 
     def forward(self, lq):
@@ -141,7 +154,8 @@ class DiffIRGANS2LightningModule(pl.LightningModule):
         # ==========================================
         # Forward pass (Get Teacher prior and Generator output)
         # ==========================================
-        _, S1_IPR = self.model_Es1(lq, gt)
+        with torch.no_grad():
+            _, S1_IPR = self.model_Es1(lq, gt)
             
         # Note: If net_g returns (output, pred_IPR_list), ensure proper unpacking
         output, pred_IPR_list = self.net(lq, S1_IPR[0])
@@ -222,6 +236,12 @@ class DiffIRGANS2LightningModule(pl.LightningModule):
         log_dict['train/out_d_real'] = torch.mean(real_d_pred.detach())
         log_dict['train/out_d_fake'] = torch.mean(fake_d_pred.detach())
         
+        with torch.no_grad():
+            preds_eval = torch.clamp(output.detach().float(), 0.0, 1.0)
+            hr_eval = torch.clamp(gt.detach().float(), 0.0, 1.0)
+            train_psnr = self.evaluator.psnr(preds_eval, hr_eval).mean().item()
+            log_dict['train/psnr_epoch'] = train_psnr
+
         self.log_dict(log_dict, prog_bar=True, sync_dist=True)
 
     def configure_optimizers(self):
@@ -279,20 +299,23 @@ class DiffIRGANS2LightningModule(pl.LightningModule):
         # Select EMA model if available
         model = self.net_ema if hasattr(self, "net_ema") else self.net
 
-        preds = model(lr) 
-        
-        metrics = self.evaluator(preds, hr)
+        with torch.no_grad():
+            output = model(lr)
+            preds = output[0] if isinstance(output, tuple) else output
+            
+            preds_eval = torch.clamp(preds.float(), 0.0, 1.0)
+            hr_eval = torch.clamp(hr.float(), 0.0, 1.0)
 
-        self.log(f"{stage}_psnr_step", metrics['psnr'], prog_bar=True, sync_dist=True)
-        self.log(f"{stage}_ssim_step", metrics['ssim'], prog_bar=True, sync_dist=True)
+        self.evaluator(preds_eval, hr_eval)
 
     def validation_step(self, batch: dict, batch_idx: int):
         self._shared_eval_step(batch, batch_idx, stage="val")
 
     def on_validation_epoch_end(self):
         metrics = self.evaluator.compute()
-        self.log("val_psnr", metrics['psnr'], prog_bar=True, sync_dist=True)
-        self.log("val_ssim", metrics['ssim'], prog_bar=True, sync_dist=True)
+        for k, v in metrics.items():
+            if k == 'fid': continue
+            self.log(f"val/{k}", v, prog_bar=True, sync_dist=True)
         self.evaluator.reset()
 
     def test_step(self, batch: dict, batch_idx:  int):
@@ -300,6 +323,50 @@ class DiffIRGANS2LightningModule(pl.LightningModule):
 
     def on_test_epoch_end(self):
         metrics = self.evaluator.compute()
-        self.log("test_psnr", metrics['psnr'], prog_bar=True, sync_dist=True)
-        self.log("test_ssim", metrics['ssim'], prog_bar=True, sync_dist=True)
+        for k, v in metrics.items():
+            self.log(f"test/{k}", v, prog_bar=False, sync_dist=True)
         self.evaluator.reset()
+    
+    @torch.no_grad()
+    def inference(self, lr_tensor: torch.Tensor) -> torch.Tensor:
+        model = self.net_ema if hasattr(self, "net_ema") else self.net
+        
+        _, _, h_old, w_old = lr_tensor.size()
+        h_pad = (8 - h_old % 8) % 8
+        w_pad = (8 - w_old % 8) % 8
+        if h_pad or w_pad:
+            lr_tensor_padded = F.pad(lr_tensor, (0, w_pad, 0, h_pad), mode='reflect')
+            preds = model(lr_tensor_padded)   
+            scale = getattr(self.hparams, 'eval_crop_border', 4)
+            h_hr_true = h_old * scale
+            w_hr_true = w_old * scale
+            preds = preds[..., :h_hr_true, :w_hr_true]
+        else:
+            preds = model(lr_tensor)
+
+        return torch.clamp(preds, 0.0, 1.0)
+
+    @torch.no_grad()
+    def log_images(self, batch: dict, N: int = 4, **kwargs) -> dict:
+        log = dict()
+        lr = batch['img'][:N]
+        hr = batch['gt'][:N]
+        actual_N = lr.shape[0]
+
+        img_names = batch.get('name', [f"image_{i}" for i in range(actual_N)])[:N]
+
+        net_to_use = self.net_ema if hasattr(self, "net_ema") else self.net
+        output = net_to_use(lr)
+        preds = output.sample if hasattr(output, 'sample') else output
+
+        lr_up = F.interpolate(lr, size=hr.shape[-2:], mode='bicubic', align_corners=False)
+
+        lr_up = torch.clamp(lr_up, 0.0, 1.0)
+        preds = torch.clamp(preds, 0.0, 1.0)
+        hr = torch.clamp(hr, 0.0, 1.0)
+
+        for i, name in enumerate(img_names):
+            triplet = torch.stack([lr_up[i], preds[i], hr[i]], dim=0)
+            log[name] = triplet
+
+        return log

@@ -42,8 +42,8 @@ class SRRegressionModule(pl.LightningModule):
         loss = F.l1_loss(preds, hr)
         
         with torch.no_grad():
-            preds_eval = torch.clamp(preds.detach(), 0.0, 1.0)
-            hr_eval = torch.clamp(hr.detach(), 0.0, 1.0)
+            preds_eval = torch.clamp(preds.detach().float(), 0.0, 1.0)
+            hr_eval = torch.clamp(hr.detach().float(), 0.0, 1.0)
             train_psnr = self.evaluator.psnr(preds_eval, hr_eval).mean().item()
         self.log("train_loss", loss, prog_bar=True, sync_dist=True)
         self.log("train/psnr_epoch", train_psnr, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
