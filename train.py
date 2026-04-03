@@ -83,10 +83,17 @@ def main():
         filename="best-{epoch:03d}-{val/psnr:.4f}",
         monitor="val/psnr",
         mode="max",
-        save_top_k=3,           # Keep the top 3 best models
-        save_last=True,         # Always save the latest model to easily resume
+        save_top_k=1,           # Keep the top 3 best models
+        save_last=False,         # Always save the latest model to easily resume
     )
 
+    last_checkpoint_callback = ModelCheckpoint(
+        dirpath=logger.log_dir,
+        filename="{epoch:03d}-last", # Generates e.g., "epoch050-last.ckpt"
+        monitor="step",        # Track global steps to always get the latest progression
+        mode="max",            # Keep the one with the maximum step
+        save_top_k=1,          # Only keep the absolute latest one, automatically deleting the previous
+    )
     # # TODO: Autoencoder
     # checkpoint_callback = ModelCheckpoint(
     #     dirpath=os.path.join("checkpoints", args.name),
@@ -118,7 +125,7 @@ def main():
     else:
         img_logger = None
 
-    callbacks = [checkpoint_callback, lr_monitor, early_stop_callback, ema_callback]
+    callbacks = [checkpoint_callback, last_checkpoint_callback, lr_monitor, early_stop_callback, ema_callback]
     # callbacks = [checkpoint_callback, lr_monitor, ema_callback]
     if img_logger:
         callbacks.append(img_logger)

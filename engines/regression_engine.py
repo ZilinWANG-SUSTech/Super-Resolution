@@ -92,7 +92,7 @@ class SRRegressionModule(pl.LightningModule):
 
     def configure_optimizers(self):
         print(self.optimizer_config)
-        optimizer = torch.optim.Adam(self.parameters(), **self.optimizer_config)
+        optimizer = torch.optim.Adam(self.net.parameters(), **self.optimizer_config)
         
         if self.lr_scheduler_config['type'] == "MultiStepLR":
             scheduler = torch.optim.lr_scheduler.MultiStepLR(

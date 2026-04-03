@@ -9,23 +9,29 @@ class EMACallback(Callback):
     def __init__(self, decay=0.999):
         super().__init__()
         self.decay = decay
+        # Removed self._loaded_ema_state as it's no longer needed
 
-    def on_fit_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+    def setup(self, trainer: pl.Trainer, pl_module: pl.LightningModule, stage: str):
         """
-        Create a shadow model (EMA) for the main model before training starts.
+        Create the shadow model (EMA) BEFORE the checkpoint is loaded.
+        Because 'setup' runs before checkpoint restoration, pl_module.net_ema 
+        will be registered as a submodule in time. PyTorch Lightning will then 
+        automatically load its weights from the checkpoint's state_dict without 
+        throwing 'Unexpected key' errors.
         """
-        # Note: Assuming the main network is named 'self.net', we create 'self.net_ema'.
         if self.decay <= 0:
             return
         
-        pl_module.net_ema = copy.deepcopy(pl_module.net)
-        
-        # Always keep the EMA model in evaluation mode to freeze batchnorm/dropout.
-        pl_module.net_ema.eval() 
-        
-        # Freeze gradients for the EMA model as it is updated via moving average.
-        for param in pl_module.net_ema.parameters():
-            param.requires_grad = False
+        # Check if it already exists to avoid overwriting during multi-stage setups
+        if not hasattr(pl_module, 'net_ema'):
+            pl_module.net_ema = copy.deepcopy(pl_module.net)
+            
+            # Always keep the EMA model in evaluation mode to freeze batchnorm/dropout.
+            pl_module.net_ema.eval() 
+            
+            # Freeze gradients for the EMA model as it is updated via moving average.
+            for param in pl_module.net_ema.parameters():
+                param.requires_grad = False
 
     def on_train_batch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule, outputs, batch, batch_idx):
         """
@@ -41,18 +47,4 @@ class EMACallback(Callback):
             net_ema_params[k].data.mul_(self.decay).add_(
                 net_params[k].data, alpha=1 - self.decay
             )
-
-    def on_save_checkpoint(self, trainer: pl.Trainer, pl_module: pl.LightningModule, checkpoint: dict):
-        """
-        Inject the EMA weights into the checkpoint dictionary when saving.
-        This ensures compatibility with the official DiffIR weight format.
-        """
-        if self.decay > 0 and hasattr(pl_module, 'net_ema'):
-            checkpoint['params_ema'] = pl_module.net_ema.state_dict()
-
-    def on_load_checkpoint(self, trainer: pl.Trainer, pl_module: pl.LightningModule, checkpoint: dict):
-        """
-        Restore the EMA model weights when resuming training or loading pretrained weights.
-        """
-        if self.decay > 0 and 'params_ema' in checkpoint and hasattr(pl_module, 'net_ema'):
-            pl_module.net_ema.load_state_dict(checkpoint['params_ema'])
+    

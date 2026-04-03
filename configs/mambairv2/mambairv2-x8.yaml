@@ -15,7 +15,7 @@ trainer:
   precision: "bf16-mixed"      # FP16 mixed precision for faster training
   log_every_n_steps: 10
   check_val_every_n_epoch: 3
-
+  accumulate_grad_batches: 2
 
 # ==============================================================================
 # DataModule Configuration (SRDataModule)
@@ -30,7 +30,7 @@ data:
   test_gt_dir: "/data/RiceSR2024/RGB-SAR/dataset/test/GT"    # Optional
   
   # DataLoader configs
-  batch_size: 16
+  batch_size: 8
   num_workers: 8
   
   # Image transformation configs

@@ -104,7 +104,7 @@ class DiffIRS1LightningModule(pl.LightningModule):
         self.evaluator.reset()
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), **self.optimizer_config)
+        optimizer = torch.optim.Adam(self.net.parameters(), **self.optimizer_config)
         
         if self.lr_scheduler_config['type'] == "MultiStepLR":
             scheduler = torch.optim.lr_scheduler.MultiStepLR(

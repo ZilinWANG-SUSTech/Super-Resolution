@@ -57,37 +57,21 @@ def main():
     module = module(**lightning_cfg.get('params', {}))
     # module = module.load_from_checkpoint(args.ckpt, **lightning_cfg['params'])
     
+    # 5. Setup Logger & Callbacks
     logger = TensorBoardLogger(save_dir="logs", name=args.name)
+    ema_callback = EMACallback(decay=config.get('ema_decay', 0))
 
-    # load ckpt
-    print(f"Loading checkpoint from {args.ckpt}...")
-    checkpoint = torch.load(args.ckpt, map_location=lambda storage, loc: storage)
-    state_dict = checkpoint["state_dict"]
-    new_state_dict = {}
-    for k, v in state_dict.items():
-        if k.startswith("net_ema."):
-            # 将 net_ema 的权重名替换为 net，使其直接加载到主网络上
-            new_state_dict[k.replace("net_ema.", "net.")] = v
-        elif k.startswith("net."):
-            # 丢弃原本未经 EMA 平滑的主网络权重
-            continue
-        else:
-            # 保留其他组件的权重 (如损失函数、评价指标等)
-            new_state_dict[k] = v
-    module.load_state_dict(new_state_dict, strict=False)
-    print("Successfully loaded EMA weights into the main network for testing.")
-
-
-    # 5. Setup Trainer for Testing
+    # 6. Setup Trainer for Testing
     trainer = pl.Trainer(
         accelerator="gpu",
         devices=args.gpus,
         logger=logger,
+        callbacks=[ema_callback]
     )
 
     # 6. Run Evaluation
     print("=== Starting Testing Evaluation ===")
-    trainer.test(module, datamodule=datamodule)
+    trainer.test(module, datamodule=datamodule, ckpt_path=args.ckpt)
     print("=== Testing Completed ===")
 
 if __name__ == "__main__":

@@ -18,8 +18,8 @@
 # SwinIR
 python test.py \
 --config configs/swinir/swinir-classical-x16.yaml \
---ckpt logs/SwinIR-x16/version_1/best-epoch=143-val_psnr=26.1052.ckpt \
--n SwinIR-x16-Test
+--ckpt logs/SwinIR-x16/version_0/best-epoch=095-val/psnr=24.8028.ckpt \
+-n SwinIR-x16
 
 # python train.py \
 # --config configs/swinir/swinir-classical-x4.yaml \

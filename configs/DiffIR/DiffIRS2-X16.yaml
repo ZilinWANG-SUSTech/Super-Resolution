@@ -85,7 +85,7 @@ lightning_module:
         timesteps: 4
 
     train_config:
-      pretrain_network_S1: None
+      pretrain_network_S1: logs/DiffIR/S1/DiffIR-x16/version_0/best-epoch=053-val/psnr=24.7730.ckpt
 
     eval_crop_border: ${globals.scale}
 
