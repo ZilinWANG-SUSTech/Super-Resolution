@@ -118,7 +118,16 @@ class DiffIRGANS2LightningModule(pl.LightningModule):
             source_dict = ckpt.get("state_dict", ckpt)
             
         clean_dict = OrderedDict()
+        
+        # Check if this is a PyTorch Lightning checkpoint (has 'net.' or 'net_ema.' prefixes)
+        is_pl_ckpt = any(k.startswith("net.") or k.startswith("net_ema.") for k in source_dict.keys())
+        
         for k, v in source_dict.items():
+            # If it's a PL checkpoint, strict filter out EVERYTHING that doesn't belong to the core network
+            # This ignores 'evaluator', 'model_Es1', 'cri_pix', etc. saved in the checkpoint
+            if is_pl_ckpt and not (k.startswith("net.") or k.startswith("net_ema.")):
+                continue
+                
             # Strip standard PyTorch Lightning prefixes
             k_clean = k.replace("net_ema.", "").replace("net.", "")
             
@@ -130,7 +139,10 @@ class DiffIRGANS2LightningModule(pl.LightningModule):
             else:
                 clean_dict[k_clean] = v
 
-        missing_keys, unexpected_keys = target_model.load_state_dict(clean_dict, strict=True)
+        # Changed to strict=False: It safely ignores unexpected keys if any slip through,
+        # and allows initializing a network even if it has slightly different architectural layers.
+        missing_keys, unexpected_keys = target_model.load_state_dict(clean_dict, strict=False)
+        
         if missing_keys:
             print(f" ⚠️ Missing keys: {len(missing_keys)}")
         if unexpected_keys:
@@ -296,13 +308,28 @@ class DiffIRGANS2LightningModule(pl.LightningModule):
         hr = batch['gt']
         lr = batch['img']        
 
+        # Calculate padding needed to make LR dimensions multiples of 16
+        _, _, h_lr, w_lr = lr.size()
+        scale = hr.size(2) // h_lr
+        pad_mult = 16
+        pad_h = (pad_mult - h_lr % pad_mult) % pad_mult
+        pad_w = (pad_mult - w_lr % pad_mult) % pad_mult
+        # Apply 'reflect' padding if needed
+        if pad_h > 0 or pad_w > 0:
+            lr_padded = F.pad(lr, (0, pad_w, 0, pad_h), mode='reflect')
+            hr_padded = F.pad(hr, (0, pad_w * scale, 0, pad_h * scale), mode='reflect')
+        else:
+            lr_padded = lr
+            hr_padded = hr
+
         # Select EMA model if available
         model = self.net_ema if hasattr(self, "net_ema") else self.net
 
         with torch.no_grad():
-            output = model(lr)
+            output = model(lr_padded)
             preds = output[0] if isinstance(output, tuple) else output
-            
+            if pad_h > 0 or pad_w > 0:
+                preds = preds[..., :hr.size(2), :hr.size(3)]
             preds_eval = torch.clamp(preds.float(), 0.0, 1.0)
             hr_eval = torch.clamp(hr.float(), 0.0, 1.0)
 
@@ -355,9 +382,25 @@ class DiffIRGANS2LightningModule(pl.LightningModule):
 
         img_names = batch.get('name', [f"image_{i}" for i in range(actual_N)])[:N]
 
+        # Calculate padding needed to make LR dimensions multiples of 16
+        _, _, h_lr, w_lr = lr.size()
+        scale = hr.size(2) // h_lr
+        pad_mult = 16
+        pad_h = (pad_mult - h_lr % pad_mult) % pad_mult
+        pad_w = (pad_mult - w_lr % pad_mult) % pad_mult
+        # Apply 'reflect' padding if needed
+        if pad_h > 0 or pad_w > 0:
+            lr_padded = F.pad(lr, (0, pad_w, 0, pad_h), mode='reflect')
+            hr_padded = F.pad(hr, (0, pad_w * scale, 0, pad_h * scale), mode='reflect')
+        else:
+            lr_padded = lr
+            hr_padded = hr
+        
         net_to_use = self.net_ema if hasattr(self, "net_ema") else self.net
-        output = net_to_use(lr)
+        output = net_to_use(lr_padded)
         preds = output.sample if hasattr(output, 'sample') else output
+        if pad_h > 0 or pad_w > 0:
+            preds = preds[..., :hr.size(2), :hr.size(3)]
 
         lr_up = F.interpolate(lr, size=hr.shape[-2:], mode='bicubic', align_corners=False)
 

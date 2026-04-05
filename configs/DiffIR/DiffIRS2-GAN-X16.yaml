@@ -149,8 +149,8 @@ lightning_module:
       
     eval_crop_border: ${globals.scale}
 
-    pretrain_network_S1: needtoadd
-    pretrain_network_S2: needtoadd
+    pretrain_s1_path: logs/DiffIR/S1/DiffIR-x16/version_0/best-epoch=059-val/psnr=24.7697.ckpt
+    pretrain_s2_path: logs/DiffIR/S2/DiffIR-x16/version_8/best-epoch=032-val/psnr=24.7993.ckpt
 
 
 

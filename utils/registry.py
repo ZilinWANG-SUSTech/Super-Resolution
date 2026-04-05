@@ -30,3 +30,4 @@ class Registry:
 ENGINE_REGISTRY = Registry('Engine')
 NETWORK_REGISTRY = Registry('Network')
 LOSS_REGISTRY = Registry('Loss')
+DIFFUSION_REGISTRY = Registry('Diffusion')

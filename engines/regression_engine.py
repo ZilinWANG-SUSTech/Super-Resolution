@@ -59,8 +59,9 @@ class SRRegressionModule(pl.LightningModule):
             else:
                 output = self.net(lr)
             preds = output.sample if hasattr(output, 'sample') else output
-
-        self.evaluator(preds, hr)
+            preds_eval = torch.clamp(preds.detach().float(), 0.0, 1.0)
+            hr_eval = torch.clamp(hr.detach().float(), 0.0, 1.0)
+        self.evaluator(preds_eval, hr_eval)
 
     def validation_step(self, batch: dict, batch_idx: int):
         self._shared_eval_step(batch, batch_idx, stage="val")

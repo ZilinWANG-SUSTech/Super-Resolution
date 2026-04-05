@@ -37,7 +37,7 @@ data:
   lq_patch_size: ${globals.lq_patch_size}   # The size to crop from Low-Res image
   scale: ${globals.scale}                   # Upsampling factor. HR patch will be 32 * 4 = 128
 
-  image_range: "0~1"
+  image_range: "-1~1"
 
 # ==============================================================================
 # Ema decay
@@ -49,69 +49,27 @@ ema_decay: 0.999
 # LightningModule Configuration (SRDiffusionModule)
 # ==============================================================================
 lightning_module:
-  target: SRGANModule
+  target: SRRegressionModule
   params:
     eval_crop_border: ${globals.scale}        # Same as scale factor to ignore boundaries during evaluation
 
-    optimizer_g_config:
-      lr: 1.0e-4
+    optimizer_config:
+      lr: 2.0e-4
       weight_decay: 0.0
       betas: [0.9, 0.99]
-
-    optimizer_d_config:
-      lr: 1.0e-4
-      weight_decay: 0.0
-      betas: [0.9, 0.99]
-
-    losses_config:
-        # losses
-      pixel_opt:
-        type: L1Loss
-        loss_weight: 1.0
-        reduction: mean
-      # perceptual loss (content and style losses)
-      # perceptual_opt:
-      #   type: PerceptualLoss
-      #   layer_weights:
-      #     # before relu
-      #     'conv1_2': 0.1
-      #     'conv2_2': 0.1
-      #     'conv3_4': 1
-      #     'conv4_4': 1
-      #     'conv5_4': 1
-      #   vgg_type: vgg19
-      #   use_input_norm: true
-      #   perceptual_weight: !!float 1.0
-      #   style_weight: 0
-      #   range_norm: false
-      #   criterion: l1
-      # gan loss
-      gan_opt:
-        type: GANLoss
-        gan_type: vanilla
-        real_label_val: 1.0
-        fake_label_val: 0.0
-        loss_weight: !!float 1e-1
 
     # ----------------------------------------------------------------------------
     # Learning Rate Scheduler
     # ----------------------------------------------------------------------------
-    lr_scheduler_g_config:
+    lr_scheduler_config:
       type: "MultiStepLR"
       milestones: [300]
       gamma: 0.5
-    
-    lr_scheduler_d_config:
-      type: "MultiStepLR"
-      milestones: [300]
-      gamma: 0.5
-    
-    pretrain_g_path: logs/RealESRGAN/Regression/X4/version_3/best-epoch=077-val/psnr=25.9788.ckpt
 
     # ----------------------------------------------------------------------------
     # Network
     # ----------------------------------------------------------------------------
-    network_g_config:
+    network_config:
       target: RRDBNet
       params:
         num_in_ch: 3
@@ -120,14 +78,6 @@ lightning_module:
         num_block: 23
         num_grow_ch: 32
         scale: ${globals.scale}
-    
-    network_d_config:
-      target: UNetDiscriminatorSN
-      params:
-          num_in_ch: 3
-          num_feat: 64
-          skip_connection: True
-
 
 # ==============================================================================
 # Image Logger

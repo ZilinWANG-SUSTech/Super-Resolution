@@ -38,30 +38,29 @@ export HF_ENDPOINT=https://hf-mirror.com
 # --config configs/DiffIR/DiffIRS2-X16.yaml \
 # -n DiffIR/S2/DiffIR-x16
 
-tsp ./run_train.sh \
---config configs/DiffIR/DiffIRS2-X4.yaml \
--n DiffIR/S2/DiffIR-x4
+# tsp ./run_train.sh \
+# --config configs/DiffIR/DiffIRS2-X4.yaml \
+# -n DiffIR/S2/DiffIR-x4
 
-tsp ./run_train.sh \
---config configs/DiffIR/DiffIRS2-X8.yaml \
--n DiffIR/S2/DiffIR-x8
+# tsp ./run_train.sh \
+# --config configs/DiffIR/DiffIRS2-X8.yaml \
+# -n DiffIR/S2/DiffIR-x8
 
 #### GAN 
-TODO: 待测试
 # python train.py \
-tsp ./run_train.sh \
---config configs/DiffIR/DiffIRS2-GAN-X4.yaml \
--n DiffIR/S2-GAN/DiffIR-x4
+# tsp ./run_train.sh \
+# --config configs/DiffIR/DiffIRS2-GAN-X4.yaml \
+# -n DiffIR/S2-GAN/DiffIR-x4
 
 # python train.py \
-tsp ./run_train.sh \
---config configs/DiffIR/DiffIRS2-GAN-X16.yaml \
--n DiffIR/S2-GAN/DiffIR-x16
+# tsp ./run_train.sh \
+# --config configs/DiffIR/DiffIRS2-GAN-X16.yaml \
+# -n DiffIR/S2-GAN/DiffIR-x16
 
 # python train.py \
-tsp ./run_train.sh \
---config configs/DiffIR/DiffIRS2-GAN-X8.yaml \
--n DiffIR/S2-GAN/DiffIR-x8
+# tsp ./run_train.sh \
+# --config configs/DiffIR/DiffIRS2-GAN-X8.yaml \
+# -n DiffIR/S2-GAN/DiffIR-x8
 
 
 
@@ -71,38 +70,40 @@ tsp ./run_train.sh \
 # -n MambaIRv2/MambaIRv2-x16
 
 # python train.py \
-tsp ./run_train.sh \
---config configs/mambairv2/mambairv2-x4.yaml \
--n MambaIRv2/MambaIRv2-x4
+# tsp ./run_train.sh \
+# --config configs/mambairv2/mambairv2-x4.yaml \
+# -n MambaIRv2/MambaIRv2-x4
 
 # python train.py \
-tsp ./run_train.sh \
---config configs/mambairv2/mambairv2-x8.yaml \
--n MambaIRv2/MambaIRv2-x8
+# tsp ./run_train.sh \
+# --config configs/mambairv2/mambairv2-x8.yaml \
+# -n MambaIRv2/MambaIRv2-x8
 
 
 #######     RealESRGAN  ############
 
 #### Regression
 # python train.py \
-tsp ./run_train.sh \
---config configs/realesrgan/realesrnet-x4.yaml \
--n RealESRGAN/Regression/X4
+# tsp ./run_train.sh \
+# --config configs/realesrgan/realesrnet-x4.yaml \
+# -n RealESRGAN/Regression/X4 \
+# --resume logs/RealESRGAN/Regression/X4/version_1/epoch=020-last.ckpt
 
 # python train.py \
-tsp ./run_train.sh \
---config configs/realesrgan/realesrnet-x8.yaml \
--n RealESRGAN/Regression/X8
+# tsp ./run_train.sh \
+# --config configs/realesrgan/realesrnet-x8.yaml \
+# -n RealESRGAN/Regression/X8 \
+# --resume logs/RealESRGAN/Regression/X8/version_0/epoch=056-last.ckpt
 
 # python train.py \
-tsp ./run_train.sh \
---config configs/realesrgan/realesrnet-x16.yaml \
--n RealESRGAN/Regression/X16
+# tsp ./run_train.sh \
+# --config configs/realesrgan/realesrnet-x16.yaml \
+# -n RealESRGAN/Regression/X16
 
 #### GAN
 # python train.py \
 tsp ./run_train.sh \
---config configs/GAN/realesrgan-x4.yaml \
+--config configs/realesrgan/realesrgan-x4.yaml \
 -n RealESRGAN/GAN/X4
 
 # python train.py \
@@ -111,9 +112,9 @@ tsp ./run_train.sh \
 -n RealESRGAN/GAN/X8
 
 # python train.py \
-tsp ./run_train.sh \
---config configs/realesrgan/realesrgan-x16.yaml \
--n RealESRGAN/GAN/X16
+# tsp ./run_train.sh \
+# --config configs/realesrgan/realesrgan-x16.yaml \
+# -n RealESRGAN/GAN/X16
 
 
 

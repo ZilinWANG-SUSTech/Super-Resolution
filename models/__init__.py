@@ -7,3 +7,4 @@ from .ldm import LatentDiffusion
 from models.mambair.mambair import MambaIR
 from models.mambair.mambairv2 import MambaIRv2
 from models.realesrgan.rrdbnet import RRDBNet
+from models.ResShift.unet import UNetModelSwin
