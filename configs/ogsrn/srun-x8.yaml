@@ -1,0 +1,96 @@
+# ==============================================================================
+# 🌟 (Global Settings)
+# ==============================================================================
+globals:
+  scale: 8
+  lq_patch_size: 48
+
+# ==============================================================================
+# Global & Trainer Configuration
+# ==============================================================================
+trainer:
+  max_epochs: 300
+  accelerator: "gpu"
+  devices: [0]               # Use list for specific GPUs, e.g., [0, 1]
+  precision: "bf16-mixed"      # FP16 mixed precision for faster training
+  log_every_n_steps: 10
+  check_val_every_n_epoch: 3
+
+
+# ==============================================================================
+# DataModule Configuration (SRDataModule)
+# ==============================================================================
+data:
+  type: GuidedSRDataModule
+
+  # Path configs (Replace with your actual dataset paths)
+  train_lr_dir: "/data/RiceSR2024/RGB-SAR/dataset/train/LR_bicubic"
+  train_hr_dir: "/data/RiceSR2024/RGB-SAR/dataset/train/GT"
+  train_guide_dir: "/data/RiceSR2024/RGB-SAR/dataset/train/RGB"
+  val_lr_dir: "/data/RiceSR2024/RGB-SAR/dataset/val/LR_bicubic"
+  val_hr_dir: "/data/RiceSR2024/RGB-SAR/dataset/val/GT"
+  val_guide_dir: "/data/RiceSR2024/RGB-SAR/dataset/val/RGB"
+  test_lr_dir: "/data/RiceSR2024/RGB-SAR/dataset/test/LR_bicubic"   # Optional
+  test_hr_dir: "/data/RiceSR2024/RGB-SAR/dataset/test/GT"    # Optional
+  test_guide_dir: "/data/RiceSR2024/RGB-SAR/dataset/test/RGB"
+  
+  # DataLoader configs
+  batch_size: 16
+  num_workers: 8
+  
+  # Image transformation configs
+  lq_patch_size: ${globals.lq_patch_size}   # The size to crop from Low-Res image
+  scale: ${globals.scale}                   # Upsampling factor. HR patch will be 32 * 4 = 128
+
+  image_range: "0~1"
+
+# ==============================================================================
+# Ema decay
+# ==============================================================================
+ema_decay: 0
+
+
+# ==============================================================================
+# LightningModule Configuration (SRDiffusionModule)
+# ==============================================================================
+lightning_module:
+  target: OGSRNModule
+  params:
+    eval_crop_border: 0        # Same as scale factor to ignore boundaries during evaluation
+
+    optimizer_config:
+      lr: 2.0e-4
+      weight_decay: 0.0
+      betas: [0.9, 0.99]
+
+    pretrain_sortn_path: logs/OGSRN/SORTN/version_0/best-epoch=030-val/psnr=18.9230.ckpt
+
+    eval_loss_weight: 0.1
+    # ----------------------------------------------------------------------------
+    # Learning Rate Scheduler
+    # ----------------------------------------------------------------------------
+    lr_scheduler_config:
+      type: "MultiStepLR"
+      milestones: [150]
+      gamma: 0.5
+
+    # ----------------------------------------------------------------------------
+    # Network
+    # ----------------------------------------------------------------------------
+    sortn_config:
+      target: SORTN
+
+    network_config:
+      target: SRUN_SinglePass
+      params:
+        scale_factor: ${globals.scale}
+        in_channels: 3
+
+
+
+# ==============================================================================
+# Image Logger
+# ==============================================================================
+image_logger:
+  log_batch_freq: 1
+  max_images: 8

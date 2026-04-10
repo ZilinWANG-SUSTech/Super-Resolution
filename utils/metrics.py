@@ -108,13 +108,19 @@ class SREvaluatorPyIQA(nn.Module):
         
         # 1. Calculate global average for all scalar metrics
         final_metrics = {
-            k: round(v / self.total_samples, 4) for k, v in self.metrics_sum.items()
+            k: (round(v / self.total_samples, 4) if k != "niqe" else round(v / self.total_samples, 2))  for k, v in self.metrics_sum.items() 
         }
         
         # 2. Calculate global FID (read all cached images from the epoch for distribution statistics)
         # Note: FID relies on feature distribution and usually requires hundreds of images to be statistically meaningful.
-        final_metrics['fid'] = round(self.fid(self.temp_preds_dir, self.temp_target_dir).item(), 4)
-        
+        # final_metrics['fid'] = round(self.fid(self.temp_preds_dir, self.temp_target_dir).item(), 4)
+        try:
+            final_metrics['fid'] = round(self.fid(self.temp_preds_dir, self.temp_target_dir).item(), 2)
+        except ValueError as e:
+            print(f"\n[Warning] Skip FID calculation: {e}")
+            final_metrics['fid'] = 0.0
+
+
         return final_metrics
         
     def __del__(self):

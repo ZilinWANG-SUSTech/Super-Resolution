@@ -1,30 +1,206 @@
-# python test.py \
-# --config configs/ldm/bsr_sr_ae_kl_64x64x3.yaml \
-# --ckpt checkpoints/LDM/latent_diffusion/best-epoch=266-val_psnr=24.1217.ckpt
+export HF_ENDPOINT=https://hf-mirror.com
 
 
+#######     SwinIR  ############
 # python test.py \
-# --config configs/DiffIR/DiffIRS2-GAN.yaml \
-# --ckpt checkpoints/DiffIR/S2-GAN/best-epoch=008-val_psnr=26.0110.ckpt
+# --config configs/swinir/swinir-classical-x16.yaml \
+# -n SwinIR-x16 \
+# --ckpt logs/SwinIR-x16/version_0/best-epoch=098-val/psnr=24.8009.ckpt
 
-# python test.py \
-# --config configs/swinir/swinir-classical.yaml \
-# --ckpt checkpoints/SwinIR-V2/best-epoch=080-val_psnr=26.1691.ckpt
 
 # python test.py \
-# --config configs/mambair/mambair.yaml \
-# --ckpt checkpoints/MambaIR-v2/best-epoch=044-val_psnr=26.1289.ckpt
-
-# SwinIR
-python test.py \
---config configs/swinir/swinir-classical-x16.yaml \
---ckpt logs/SwinIR-x16/version_0/best-epoch=095-val/psnr=24.8028.ckpt \
--n SwinIR-x16
-
-# python train.py \
 # --config configs/swinir/swinir-classical-x4.yaml \
-# -n SwinIR-x4
+# -n SwinIR-x4 \
+# --ckpt logs/SwinIR-x4/version_0/best-epoch=299-val/psnr=25.9014.ckpt
 
-# python train.py \
+# python test.py \
 # --config configs/swinir/swinir-classical-x8.yaml \
-# -n SwinIR-x8
+# -n SwinIR-x8 \
+# --ckpt logs/SwinIR-x8/version_0/best-epoch=059-val/psnr=25.2266.ckpt
+
+
+#######     DiffIR  ############
+
+##### S1
+# python test.py \
+# --config configs/DiffIR/DiffIRS1-X16.yaml \
+# -n DiffIR/S1/DiffIR-x16
+
+# python test.py \
+# --config configs/DiffIR/DiffIRS1-X4.yaml \
+# -n DiffIR/S1/DiffIR-x4
+
+# python test.py \
+# --config configs/DiffIR/DiffIRS1-X8.yaml \
+# -n DiffIR/S1/DiffIR-x8
+
+
+##### S2
+### TODO: Add S1 Checkpoint
+# tsp ./run_test.sh python test.py \
+# --config configs/DiffIR/DiffIRS2-X16.yaml \
+# -n DiffIR/S2/DiffIR-x16
+
+# tsp ./run_test.sh \
+# --config configs/DiffIR/DiffIRS2-X4.yaml \
+# -n DiffIR/S2/DiffIR-x4
+
+# tsp ./run_test.sh \
+# --config configs/DiffIR/DiffIRS2-X8.yaml \
+# -n DiffIR/S2/DiffIR-x8
+
+#### GAN 
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/DiffIR/DiffIRS2-GAN-X4.yaml \
+# -n DiffIR/S2-GAN/DiffIR-x4 \
+# --ckpt logs/DiffIR/S2-GAN/DiffIR-x4/version_0/best-epoch=002-val/psnr=25.8149.ckpt
+
+
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/DiffIR/DiffIRS2-GAN-X16.yaml \
+# -n DiffIR/S2-GAN/DiffIR-x16 \
+# --ckpt logs/DiffIR/S2-GAN/DiffIR-x16/version_0/best-epoch=002-val/psnr=24.7007.ckpt
+
+
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/DiffIR/DiffIRS2-GAN-X8.yaml \
+# -n DiffIR/S2-GAN/DiffIR-x8 \
+# --ckpt logs/DiffIR/S2-GAN/DiffIR-x8/version_0/best-epoch=014-val/psnr=25.0510.ckpt
+
+
+
+#######     MambaIRv2  ############
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/mambairv2/mambairv2-x16.yaml \
+# -n MambaIRv2/MambaIRv2-x16 \
+# --ckpt logs/MambaIRv2/MambaIRv2-x16/version_0/best-epoch=032-val/psnr=24.8344.ckpt
+
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/mambairv2/mambairv2-x4.yaml \
+# -n MambaIRv2/MambaIRv2-x4 \
+# --ckpt logs/MambaIRv2/MambaIRv2-x4/version_0/best-epoch=062-val/psnr=25.9928.ckpt
+
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/mambairv2/mambairv2-x8.yaml \
+# -n MambaIRv2/MambaIRv2-x8 \
+# --ckpt logs/MambaIRv2/MambaIRv2-x8/version_0/best-epoch=047-val/psnr=25.2182.ckpt
+
+
+#######     RealESRGAN  ############
+
+#### Regression
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/realesrgan/realesrnet-x4.yaml \
+# -n RealESRGAN/Regression/X4 \
+# --resume logs/RealESRGAN/Regression/X4/version_1/epoch=020-last.ckpt
+
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/realesrgan/realesrnet-x8.yaml \
+# -n RealESRGAN/Regression/X8 \
+# --resume logs/RealESRGAN/Regression/X8/version_0/epoch=056-last.ckpt
+
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/realesrgan/realesrnet-x16.yaml \
+# -n RealESRGAN/Regression/X16
+
+#### GAN
+# # python test.py \
+# tsp ./run_test.sh \
+# --config configs/realesrgan/realesrgan-x4.yaml \
+# -n RealESRGAN/GAN/X4 \
+# --ckpt logs/RealESRGAN/GAN/X4/version_0/best-epoch=002-val/psnr=25.8070.ckpt
+
+# # python test.py \
+# tsp ./run_test.sh \
+# --config configs/realesrgan/realesrgan-x8.yaml \
+# -n RealESRGAN/GAN/X8 \
+# --ckpt logs/RealESRGAN/GAN/X8/version_0/best-epoch=002-val/psnr=24.8503.ckpt
+
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/realesrgan/realesrgan-x16.yaml \
+# -n RealESRGAN/GAN/X16 \
+# --ckpt logs/RealESRGAN/GAN/X16/version_0/best-epoch=002-val/psnr=24.4222.ckpt
+
+
+
+
+#######     ResShift  ############
+# 后面再说, 太难了这个
+# #### VQGAN
+# # python test.py \
+# tsp ./run_test.sh \
+# --config configs/VQGAN/vqgan-x4.yaml \
+# -n VQGAN/X4
+
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/VQGAN/vqgan-x8.yaml \
+# -n VQGAN/X8
+
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/VQGAN/vqgan-x16.yaml \
+# -n VQGAN/X16
+
+
+
+#######     UGSR  ############
+
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/UGSR/ugsr-x4.yaml \
+# -n UGSR/X4 \
+# --resume logs/UGSR/X4/version_0/epoch=011-last.ckpt
+
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/UGSR/ugsr-x8.yaml \
+# -n UGSR/X8
+
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/UGSR/ugsr-x16.yaml \
+# -n UGSR/X16
+
+
+
+
+#######     OGSRN  ############
+
+#### 1. test SORTN
+# python test.py \
+# tsp ./run_test.sh \
+# --config configs/ogsrn/sortn.yaml \
+# -n OGSRN/SORTN \
+# --resume logs/OGSRN/SORTN/version_0/epoch=070-last.ckpt
+
+
+# #### 2. test SRUN
+# python test.py \
+tsp ./run_test.sh \
+--config configs/ogsrn/srun-x4.yaml \
+-n OGSRN/SRUN/X4 \
+--ckpt logs/OGSRN/SRUN/X4/version_0/best-epoch=122-val/psnr=26.0314.ckpt
+
+# python test.py \
+tsp ./run_test.sh \
+--config configs/ogsrn/srun-x8.yaml \
+-n OGSRN/SRUN/X8 \
+--ckpt logs/OGSRN/SRUN/X8/version_0/best-epoch=068-val/psnr=25.2672.ckpt
+
+
+# python test.py \
+tsp ./run_test.sh \
+--config configs/ogsrn/srun-x16.yaml \
+-n OGSRN/SRUN/X16 \
+--ckpt logs/OGSRN/SRUN/X16/version_0/best-epoch=260-val/psnr=24.8504.ckpt

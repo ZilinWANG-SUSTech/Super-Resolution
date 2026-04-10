@@ -352,6 +352,9 @@ class DiffIRGANS2LightningModule(pl.LightningModule):
         metrics = self.evaluator.compute()
         for k, v in metrics.items():
             self.log(f"test/{k}", v, prog_bar=False, sync_dist=True)
+        save_dir = self.logger.log_dir
+        save_filename = os.path.join(save_dir, "test_results_summary.xlsx")
+        self.evaluator.save_to_excel(save_filename, metrics=metrics)
         self.evaluator.reset()
     
     @torch.no_grad()

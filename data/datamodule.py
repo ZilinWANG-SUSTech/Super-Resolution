@@ -3,6 +3,8 @@ from torch.utils.data import DataLoader
 from .dataset import BasicSRDataset
 from .transforms import PairedTransform
 import os
+from .transforms import GuidedTransform
+from .dataset import GuidedSRDataset
 
 class SRDataModule(pl.LightningDataModule):
     def __init__(
@@ -109,5 +111,83 @@ class SRDataModule(pl.LightningDataModule):
                 shuffle=False, 
                 num_workers=self.num_workers,
                 pin_memory=True
+            )
+        raise ValueError("Test datasets are not configured.")
+    
+
+class GuidedSRDataModule(pl.LightningDataModule):
+    def __init__(
+        self,
+        train_lr_dir: str, train_hr_dir: str, train_guide_dir: str,
+        val_lr_dir: str, val_hr_dir: str, val_guide_dir: str,
+        test_lr_dir: str = None, test_hr_dir: str = None, test_guide_dir: str = None,
+        batch_size: int = 8,
+        num_workers: int = 4,
+        lq_patch_size: int = 32,
+        scale: int = 4,
+        image_range: str = "-1~1",
+    ):
+        super().__init__()
+        self.train_lr_dir = os.path.join(train_lr_dir, f"X{scale}")
+        self.train_hr_dir = train_hr_dir
+        self.train_guide_dir = train_guide_dir
+        
+        self.val_lr_dir = os.path.join(val_lr_dir, f"X{scale}")
+        self.val_hr_dir = val_hr_dir
+        self.val_guide_dir = val_guide_dir
+        
+        self.test_lr_dir = os.path.join(test_lr_dir, f"X{scale}")
+        self.test_hr_dir = test_hr_dir
+        self.test_guide_dir = test_guide_dir
+        
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.lq_patch_size = lq_patch_size
+        self.scale = scale
+        self.image_range = image_range
+
+    def setup(self, stage: str = None):
+        if stage == 'fit' or stage is None:
+            train_transform = GuidedTransform(
+                phase="train", lq_patch_size=self.lq_patch_size, scale=self.scale, image_range=self.image_range
+            )
+            val_transform = GuidedTransform(
+                phase="val", lq_patch_size=self.lq_patch_size, scale=self.scale, image_range=self.image_range
+            )
+            
+            self.train_dataset = GuidedSRDataset(
+                lr_dir=self.train_lr_dir, hr_dir=self.train_hr_dir, guide_dir=self.train_guide_dir, transform=train_transform
+            )
+            
+            self.val_dataset = GuidedSRDataset(
+                lr_dir=self.val_lr_dir, hr_dir=self.val_hr_dir, guide_dir=self.val_guide_dir, transform=val_transform
+            )
+            
+        if stage == 'test' or stage is None:
+            if self.test_lr_dir is not None and self.test_hr_dir is not None:
+                test_transform = GuidedTransform(
+                    phase="val", lq_patch_size=self.lq_patch_size, scale=self.scale, image_range=self.image_range
+                )
+                self.test_dataset = GuidedSRDataset(
+                    lr_dir=self.test_lr_dir, hr_dir=self.test_hr_dir, guide_dir=self.test_guide_dir, transform=test_transform
+                )
+
+    def train_dataloader(self):
+        return DataLoader(
+            self.train_dataset, batch_size=self.batch_size, shuffle=True, 
+            num_workers=self.num_workers, drop_last=True, pin_memory=True
+        )
+
+    def val_dataloader(self):
+        return DataLoader(
+            self.val_dataset, batch_size=self.batch_size, shuffle=False, 
+            num_workers=self.num_workers, pin_memory=True
+        )
+
+    def test_dataloader(self):
+        if hasattr(self, 'test_dataset'):
+            return DataLoader(
+                self.test_dataset, batch_size=1, shuffle=False, 
+                num_workers=self.num_workers, pin_memory=True
             )
         raise ValueError("Test datasets are not configured.")

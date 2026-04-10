@@ -11,6 +11,7 @@ import engines
 from utils import EMACallback, build_engine_cls
 import torch
 from pytorch_lightning.loggers import TensorBoardLogger
+from data import build_datamodule
 
 
 def parse_args():
@@ -47,7 +48,7 @@ def main():
     # 3. Instantiate DataModule
     # We only need the test dataset here, but DataModule handles everything
     data_cfg = OmegaConf.to_container(config.data, resolve=True)
-    datamodule = SRDataModule(**data_cfg)
+    datamodule = build_datamodule(data_cfg)
 
     # 4. Load Model from Checkpoint
     # PTL magically restores all hyperparameters (network_config, etc.) 

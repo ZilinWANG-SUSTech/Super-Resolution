@@ -6,7 +6,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, Ea
 from pytorch_lightning.loggers import TensorBoardLogger
 from omegaconf import OmegaConf
 
-from data.datamodule import SRDataModule
+from data import build_datamodule
 import models
 import engines
 from utils import EMACallback, build_engine, ImageLogger, SRImageLogger
@@ -56,7 +56,7 @@ def main():
     # 4. Instantiate DataModule
     # Convert OmegaConf DictConfig to native python dict for **kwargs unpacking
     data_cfg = OmegaConf.to_container(config.data, resolve=True)
-    datamodule = SRDataModule(**data_cfg)
+    datamodule = build_datamodule(data_cfg)
 
     # 5. Instantiate LightningModule
     lightning_cfg = OmegaConf.to_container(config.lightning_module, resolve=True)

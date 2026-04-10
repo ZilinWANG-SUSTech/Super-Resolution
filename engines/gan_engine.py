@@ -204,8 +204,8 @@ class SRGANModule(pl.LightningModule):
         with torch.no_grad():
             if hasattr(self, "net_ema"):
                 output = self.net_ema(lr)
-            else:
-                output = self.net(lr)
+            # else:
+            #     output = self.net(lr)
             preds = output.sample if hasattr(output, 'sample') else output
             
             # Ensure float32 casting here as well for safety
@@ -223,6 +223,9 @@ class SRGANModule(pl.LightningModule):
             if k == 'fid':
                 continue
             self.log(f"val/{k}", v, prog_bar=True, sync_dist=True)
+        save_dir = self.logger.log_dir
+        save_filename = os.path.join(save_dir, "test_results_summary.xlsx")
+        self.evaluator.save_to_excel(save_filename, metrics=metrics)
         self.evaluator.reset()
 
     def test_step(self, batch: dict, batch_idx: int):

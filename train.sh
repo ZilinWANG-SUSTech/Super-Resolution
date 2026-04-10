@@ -101,15 +101,15 @@ export HF_ENDPOINT=https://hf-mirror.com
 # -n RealESRGAN/Regression/X16
 
 #### GAN
-# python train.py \
-tsp ./run_train.sh \
---config configs/realesrgan/realesrgan-x4.yaml \
--n RealESRGAN/GAN/X4
+# # python train.py \
+# tsp ./run_train.sh \
+# --config configs/realesrgan/realesrgan-x4.yaml \
+# -n RealESRGAN/GAN/X4
 
-# python train.py \
-tsp ./run_train.sh \
---config configs/realesrgan/realesrgan-x8.yaml \
--n RealESRGAN/GAN/X8
+# # python train.py \
+# tsp ./run_train.sh \
+# --config configs/realesrgan/realesrgan-x8.yaml \
+# -n RealESRGAN/GAN/X8
 
 # python train.py \
 # tsp ./run_train.sh \
@@ -118,3 +118,70 @@ tsp ./run_train.sh \
 
 
 
+
+#######     ResShift  ############
+后面再说, 太难了这个
+#### VQGAN
+# python train.py \
+tsp ./run_train.sh \
+--config configs/VQGAN/vqgan-x4.yaml \
+-n VQGAN/X4
+
+python train.py \
+tsp ./run_train.sh \
+--config configs/VQGAN/vqgan-x8.yaml \
+-n VQGAN/X8
+
+python train.py \
+tsp ./run_train.sh \
+--config configs/VQGAN/vqgan-x16.yaml \
+-n VQGAN/X16
+
+
+
+#######     UGSR  ############
+
+python train.py \
+tsp ./run_train.sh \
+--config configs/UGSR/ugsr-x4.yaml \
+-n UGSR/X4 \
+--resume logs/UGSR/X4/version_0/epoch=011-last.ckpt
+
+python train.py \
+tsp ./run_train.sh \
+--config configs/UGSR/ugsr-x8.yaml \
+-n UGSR/X8
+
+python train.py \
+tsp ./run_train.sh \
+--config configs/UGSR/ugsr-x16.yaml \
+-n UGSR/X16
+
+
+
+
+#######     OGSRN  ############
+
+#### 1. Train SORTN
+python train.py \
+tsp ./run_train.sh \
+--config configs/ogsrn/sortn.yaml \
+-n OGSRN/SORTN \
+--resume logs/OGSRN/SORTN/version_0/epoch=070-last.ckpt
+
+
+#### 2. Train SRUN
+python train.py \
+tsp ./run_train.sh \
+--config configs/ogsrn/srun-x4.yaml \
+-n OGSRN/SRUN/X4
+
+python train.py \
+tsp ./run_train.sh \
+--config configs/ogsrn/srun-x8.yaml \
+-n OGSRN/SRUN/X8
+
+python train.py \
+tsp ./run_train.sh \
+--config configs/ogsrn/srun-x16.yaml \
+-n OGSRN/SRUN/X16

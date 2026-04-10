@@ -7,8 +7,8 @@ from tqdm import tqdm
 from omegaconf import OmegaConf
 import models
 import engines
-# 统一从 utils 导入构建函数
-from utils import build_engine_cls
+from utils import build_engine_cls, EMACallback
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Unified Universal Inference Script")
@@ -34,23 +34,8 @@ def main():
     engine_cls = build_engine_cls(lightning_cfg)
     module = engine_cls(**lightning_cfg['params'])
     # module = engine_cls.load_from_checkpoint(args.ckpt, **lightning_cfg['params'])
-    
-    # load checkpoint
-    checkpoint = torch.load(args.ckpt, map_location=device)
-    state_dict = checkpoint["state_dict"]
-    new_state_dict = {}
-    for k, v in state_dict.items():
-        if k.startswith("net_ema."):
-            # 将 net_ema 的权重名替换为 net，覆盖到主网络
-            new_state_dict[k.replace("net_ema.", "net.")] = v
-        elif k.startswith("net."):
-            # 丢弃原本未经 EMA 平滑的主干权重
-            continue
-        else:
-            # 保留其他非网络权重的组件
-            new_state_dict[k] = v
-    # 加载正式的ckpt
-    module.load_state_dict(new_state_dict, strict=False)
+
+    ema_callback = EMACallback(decay=config.get('ema_decay', 0))    
 
     module.eval()
     module.to(device)

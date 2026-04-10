@@ -56,8 +56,8 @@ class SRRegressionModule(pl.LightningModule):
         with torch.no_grad():
             if hasattr(self, "net_ema"):
                 output = self.net_ema(lr)
-            else:
-                output = self.net(lr)
+            # else:
+            #     output = self.net(lr)
             preds = output.sample if hasattr(output, 'sample') else output
             preds_eval = torch.clamp(preds.detach().float(), 0.0, 1.0)
             hr_eval = torch.clamp(hr.detach().float(), 0.0, 1.0)
