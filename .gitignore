@@ -5,4 +5,5 @@ taming/
 .vscode
 kaggle-datasets/
 logs/
-
+outputs/
+get_visual_images.py
