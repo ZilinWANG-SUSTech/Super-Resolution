@@ -15,7 +15,7 @@ done
 # 3. Critical Environment Variables for terminal rendering
 export PYTHONUNBUFFERED=1
 export FORCE_COLOR=1
-export RICH_CONSOLE_WIDTH=160
+export RICH_CONSOLE_WIDTH=400
 
 echo "=========================================================="
 echo "Submitting Task to TSP (Terminal Output Only)"

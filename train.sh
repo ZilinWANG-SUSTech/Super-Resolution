@@ -120,7 +120,6 @@ export HF_ENDPOINT=https://hf-mirror.com
 
 
 #######     ResShift  ############
-后面再说, 太难了这个
 #### VQGAN
 # python train.py \
 tsp ./run_train.sh \
