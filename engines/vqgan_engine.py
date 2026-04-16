@@ -90,9 +90,9 @@ class VQGANModule(pl.LightningModule):
         self.untoggle_optimizer(opt_disc)
 
         # Unified logging
-        self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True)
-        self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=True)
-        self.log("train/aeloss", aeloss, prog_bar=True)
+        self.log_dict(log_dict_ae, prog_bar=True, logger=True, on_step=True)
+        self.log_dict(log_dict_disc, prog_bar=True, logger=True, on_step=True)
+        # self.log("train/aeloss", aeloss, prog_bar=True)
 
     def validation_step(self, batch: dict, batch_idx: int):
         x = batch[self.image_key]

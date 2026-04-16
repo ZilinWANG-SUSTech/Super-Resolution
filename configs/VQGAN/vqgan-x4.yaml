@@ -15,7 +15,7 @@ trainer:
   precision: "bf16-mixed"      # FP16 mixed precision for faster training
   log_every_n_steps: 10
   check_val_every_n_epoch: 3
-
+  # accumulate_grad_batches: 4
 
 # ==============================================================================
 # DataModule Configuration (SRDataModule)
@@ -88,9 +88,10 @@ lightning_module:
       params:
         disc_conditional: False
         disc_in_channels: 3
-        disc_start: 0
+        disc_start: 151_001
         disc_weight: 0.75
         codebook_weight: 1.0
+        perceptual_weight: 0.0
 
 
 # ==============================================================================

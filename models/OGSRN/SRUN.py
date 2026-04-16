@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.modules.conv import Conv2d
 import math
 from utils import NETWORK_REGISTRY
 
@@ -150,9 +149,10 @@ class SRUN_SinglePass(nn.Module):
 
 
 if __name__ == '__main__':
-    model = SRUN_SinglePass(scale_factor=8)
+    model = SRUN_SinglePass(scale_factor=16)
     model = model.cuda()
-    inp = torch.randn(8,1,32,32).cuda()
+    inp = torch.randn(8,1,30,30).cuda()
+    print(inp.shape)
     out,features = model(inp)
     # for i in features:
     #     print(i.size())

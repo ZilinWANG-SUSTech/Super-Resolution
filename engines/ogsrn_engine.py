@@ -225,8 +225,18 @@ class OGSRNModule(pl.LightningModule):
         preds = output[0] if isinstance(output, tuple) else output
 
         # Crop back to original scale
-        scale = self.hparams.get('scale_factor', 4) # Assuming scale_factor is in hparams
-        h_hr_true, w_hr_true = h_old * scale, w_old * scale
+        padded_lr_h = h_old + h_pad
+        hr_h = preds.size(-2)
+        
+        # Calculate actual scale factor strictly based on tensor shapes
+        actual_scale = hr_h // padded_lr_h
+        
+        # Calculate the target dimensions
+        h_hr_true = h_old * actual_scale
+        w_hr_true = w_old * actual_scale
+        
+        # Crop back to original scale (extracting the top-left region)
         preds = preds[..., :h_hr_true, :w_hr_true]
         
+        # Ensure values are within valid image range
         return torch.clamp(preds, 0.0, 1.0)

@@ -90,10 +90,11 @@ lightning_module:
       params:
         disc_conditional: False
         disc_in_channels: 3
-        disc_start: 112801
+        disc_start: 151_001
         disc_weight: 0.75
         disc_num_layers: 2
         codebook_weight: 1.0
+        perceptual_weight: 0.0
 
 
 # ==============================================================================
