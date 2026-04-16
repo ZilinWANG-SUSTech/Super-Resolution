@@ -49,6 +49,7 @@ def main():
     if not os.path.exists(args.config):
         raise FileNotFoundError(f"Config file {args.config} not found.")
     config = OmegaConf.load(args.config)
+    input_key = config.globals.get("input_key", None)
 
     pl.seed_everything(42, workers=True)
     device = torch.device(f"cuda:{args.gpus[0]}" if torch.cuda.is_available() else "cpu")
@@ -126,8 +127,9 @@ def main():
     # 4. Run Inference Loop over DataModule
     with torch.no_grad():
         for batch_idx, batch in enumerate(tqdm(test_loader, desc="Processing batches")):
-            
-            if 'img' in batch:
+            if input_key:
+                lr_tensor = batch[input_key].to(device)
+            elif 'img' in batch:
                 lr_tensor = batch['img'].to(device)
             elif 'lr' in batch:
                 lr_tensor = batch['lr'].to(device)

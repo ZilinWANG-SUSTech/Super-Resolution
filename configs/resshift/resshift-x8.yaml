@@ -3,8 +3,7 @@
 # ==============================================================================
 globals:
   scale: 8
-  lq_patch_size: 32
-  input_key: gt
+  lq_patch_size: 48
 
 # ==============================================================================
 # Global & Trainer Configuration
@@ -31,7 +30,7 @@ data:
   test_gt_dir: "/data/RiceSR2024/RGB-SAR/dataset/test/GT"    # Optional
   
   # DataLoader configs
-  batch_size: 4
+  batch_size: 16
   num_workers: 8
   
   # Image transformation configs
@@ -43,29 +42,80 @@ data:
 # ==============================================================================
 # Ema decay
 # ==============================================================================
-ema_decay: 0
+ema_decay: 0.999
 
 
 # ==============================================================================
 # LightningModule Configuration (SRDiffusionModule)
 # ==============================================================================
 lightning_module:
-  target: VQGANModule
+  target: ResShiftDiffusionModule
   params:
     eval_crop_border: ${globals.scale}        # Same as scale factor to ignore boundaries during evaluation
 
-    optimizer_g_config:
-      lr: 4.5e-6
+    optimizer_config:
+      lr: 5e-5
       weight_decay: 0.0
-      betas: [0.5, 0.9]
+      betas: [0.9, 0.999]
 
-    optimizer_d_config:
-      lr: 4.5e-6
-      weight_decay: 0.0
-      betas: [0.5, 0.9]
+    # ----------------------------------------------------------------------------
+    # Learning Rate Scheduler
+    # ----------------------------------------------------------------------------
+    lr_scheduler_config:
+      type: "cosin"
+      warmup_epoch: 5
+      T_max: 295  # 5 epoch warmup
+      eta_min: 2e-5
+      
 
+    # ----------------------------------------------------------------------------
+    # Network
+    # ----------------------------------------------------------------------------
     network_config:
-      target: VQModelTorch
+      target: UNetModelSwin
+      params:
+        image_size: ${globals.lq_patch_size}
+        in_channels: 4   # 需要改成对应的Latent Space的Dimention
+        model_channels: 160
+        out_channels: 4  # The same as the in channels
+        attention_resolutions: [48,24,12,6] # 全覆盖，需要进行对应的修改
+        dropout: 0
+        channel_mult: [1, 2, 2, 4]
+        num_res_blocks: [2, 2, 2, 2]
+        conv_resample: True
+        dims: 2
+        use_fp16: False
+        num_head_channels: 32
+        use_scale_shift_norm: True
+        resblock_updown: False
+        swin_depth: 2
+        swin_embed_dim: 192
+        window_size: 6
+        mlp_ratio: 4
+        cond_lq: True
+        lq_size: ${globals.lq_patch_size}
+
+
+    diffusion_config:
+      target: create_gaussian_diffusion
+      params:
+        sf: ${globals.scale} 
+        schedule_name: exponential
+        schedule_kwargs:
+          power: 0.3
+        etas_end: 0.99
+        steps: 15
+        min_noise_level: 0.04
+        kappa: 2.0
+        weighted_mse: False
+        predict_type: xstart
+        timestep_respacing: ~
+        scale_factor: 1.0
+        normalize_input: True
+        latent_flag: True
+
+    autoencoder_config:
+      target: VQModelResShift
       params:
         embed_dim: 4
         n_embed: 16384
@@ -85,17 +135,7 @@ lightning_module:
           attn_resolutions: [32]
           dropout: 0.0
 
-    lossconfig:
-      target: taming.modules.losses.vqperceptual.VQLPIPSWithDiscriminator
-      params:
-        disc_conditional: False
-        disc_in_channels: 3
-        disc_start: 302_001
-        disc_weight: 0.6
-        disc_num_layers: 2
-        codebook_weight: 1.0
-        perceptual_weight: 0.0
-
+    autoencoder_ckpt_path: needToAdd
 
 # ==============================================================================
 # Image Logger

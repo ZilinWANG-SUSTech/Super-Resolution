@@ -3,6 +3,7 @@ import pytorch_lightning as pl
 from utils.metrics import SREvaluatorPyIQA
 from utils import ENGINE_REGISTRY, build_network
 import importlib
+import os
 
 
 def get_obj_from_str(string, reload=False):
@@ -119,6 +120,24 @@ class VQGANModule(pl.LightningModule):
             self.log(f"val/{k}", v, prog_bar=True, sync_dist=True)
         self.evaluator.reset()
 
+    def test_step(self, batch: dict, batch_idx:  int):
+        x = batch[self.image_key]
+        x_rec, _ = self.net(x)
+        preds_eval = torch.clamp(x_rec.detach().float() * 0.5 + 0.5, 0.0, 1.0)
+        hr_eval = torch.clamp(x.detach().float() * 0.5 + 0.5, 0.0, 1.0)
+        self.evaluator(preds_eval, hr_eval)
+
+    def on_test_epoch_end(self):
+        metrics = self.evaluator.compute()
+        
+        for k, v in metrics.items():
+            self.log(f"test/{k}", v, prog_bar=False, sync_dist=True)
+        save_dir = self.logger.log_dir
+        save_filename = os.path.join(save_dir, "test_results_summary.xlsx")
+        self.evaluator.save_to_excel(save_filename, metrics=metrics)
+        self.evaluator.reset()
+    
+
     def configure_optimizers(self):
         # Now all AE parameters are neatly organized under self.net
         opt_ae = torch.optim.Adam(self.net.parameters(), **self.hparams.optimizer_g_config)
@@ -140,3 +159,8 @@ class VQGANModule(pl.LightningModule):
         log["inputs"] = torch.clamp(x * 0.5 + 0.5, 0.0, 1.0)
         log["reconstructions"] = torch.clamp(x_rec * 0.5 + 0.5, 0.0, 1.0)
         return log
+
+    @torch.no_grad()
+    def inference(self, lr_tensor: torch.Tensor) -> torch.Tensor:
+        preds = self.net(lr_tensor)[0] * 0.5 + 0.5
+        return torch.clamp(preds, 0.0, 1.0)

@@ -4,6 +4,7 @@
 globals:
   scale: 16
   lq_patch_size: 16
+  input_key: gt
 
 # ==============================================================================
 # Global & Trainer Configuration

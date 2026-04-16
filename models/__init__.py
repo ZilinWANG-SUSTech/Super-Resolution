@@ -8,8 +8,11 @@ from models.mambair.mambair import MambaIR
 from models.mambair.mambairv2 import MambaIRv2
 from models.realesrgan.rrdbnet import RRDBNet
 from models.ResShift.unet import UNetModelSwin
-from models.VQGAN.vqgan import VQModelTorch
+from models.VQGAN.vqgan import VQModelTorch, VQModelResShift
 from models.UGSR.ugsr import UGSRGenerator
 from models.OGSRN.PatchGAN import PatchGAN
 from models.OGSRN.SORTN import SORTN
 from models.OGSRN.SRUN import SRUN_SinglePass
+from models.ResShift.scripy_util import create_gaussian_diffusion
+from models.ResShift.unet import UNetModelSwin
+

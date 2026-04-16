@@ -120,11 +120,14 @@ export HF_ENDPOINT=https://hf-mirror.com
 
 
 #######     ResShift  ############
+
 #### VQGAN
 # python train.py \
 tsp ./run_train.sh \
+python train.py \
 --config configs/VQGAN/vqgan-x4.yaml \
--n VQGAN/X4
+-n VQGAN/X4 \
+--resume logs/VQGAN/X4/version_12/best-epoch=092-val/psnr=27.0352.ckpt
 
 # python train.py \
 tsp ./run_train.sh \
@@ -137,6 +140,21 @@ tsp ./run_train.sh \
 -n VQGAN/X16
 
 
+#### ResShift
+# tsp ./run_train.sh \
+python train.py \
+--config configs/resshift/resshift-x4.yaml \
+-n ResShift/X4
+
+# tsp ./run_train.sh \
+python train.py \
+--config configs/resshift/resshift-x8.yaml \
+-n ResShift/X8
+
+# tsp ./run_train.sh \
+python train.py \
+--config configs/resshift/resshift-x16.yaml \
+-n ResShift/X16
 
 #######     UGSR  ############
 

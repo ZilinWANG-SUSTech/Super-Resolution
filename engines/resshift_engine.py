@@ -39,12 +39,10 @@ class ResShiftDiffusionModule(pl.LightningModule):
             # Load pre-trained weights for the autoencoder using the newly provided argument
             if autoencoder_ckpt_path is not None:
                 if os.path.exists(autoencoder_ckpt_path):
-                    ae_ckpt = torch.load(autoencoder_ckpt_path, map_location='cpu')
-                    if 'state_dict' in ae_ckpt:
-                        ae_ckpt = ae_ckpt['state_dict']
+                    ae_ckpt = self.load_ae_ckpt(autoencoder_ckpt_path)
                     self.autoencoder.load_state_dict(ae_ckpt, strict=True)
-                else:
-                    raise FileNotFoundError(f"Autoencoder checkpoint not found at {autoencoder_ckpt_path}")
+            else:
+                raise FileNotFoundError(f"Autoencoder checkpoint not found at {autoencoder_ckpt_path}")
 
             # Freeze autoencoder parameters
             for params in self.autoencoder.parameters():
@@ -56,15 +54,54 @@ class ResShiftDiffusionModule(pl.LightningModule):
         # 3. Build the Diffusion core controller directly
         self.base_diffusion = build_diffusion(diffusion_config)
 
+    def load_ae_ckpt(self, ckpt_path):
+        """
+        Load and clean the autoencoder checkpoint by removing unneeded modules 
+        (like evaluators) and stripping the 'net.' prefix.
+        """
+        if not os.path.exists(ckpt_path):
+            raise FileNotFoundError(f"Autoencoder checkpoint not found at {ckpt_path}")
+
+        # Load the raw checkpoint to CPU to avoid VRAM spikes
+        raw_ckpt = torch.load(ckpt_path, map_location='cpu')
+
+        # Extract state_dict if wrapped in a training checkpoint format
+        if 'state_dict' in raw_ckpt:
+            raw_ckpt = raw_ckpt['state_dict']
+
+        clean_state_dict = {}
+        
+        # Iterate over the original keys to filter and rename
+        for key, value in raw_ckpt.items():
+            # Only keep the weights belonging to the core autoencoder network
+            if key.startswith('net.'):
+                # Strip the 'net.' prefix (which is exactly 4 characters long)
+                new_key = key[4:]
+                clean_state_dict[new_key] = value
+
+        return clean_state_dict
+
     def configure_optimizers(self):
         print(self.optimizer_config)
-        optimizer = torch.optim.Adam(self.net.parameters(), **self.optimizer_config)
+        optimizer = torch.optim.AdamW(self.net.parameters(), **self.optimizer_config)
         
-        if self.lr_scheduler_config['type'] == "MultiStepLR":
-            scheduler = torch.optim.lr_scheduler.MultiStepLR(
-                optimizer,
-                milestones=self.lr_scheduler_config['milestones'],
-                gamma=self.lr_scheduler_config['gamma']
+        if self.lr_scheduler_config['type'] == "cosin":
+            warmup_epochs = self.lr_scheduler_config['warmup_epoch']
+            warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
+                optimizer=optimizer,
+                start_factor=1.0 / warmup_epochs if warmup_epochs > 0 else 1.0, 
+                end_factor=1.0,
+                total_iters=warmup_epochs
+            )
+            cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer=optimizer,
+                T_max=self.lr_scheduler_config['T_max'],
+                eta_min=self.lr_scheduler_config['eta_min'],
+            )
+            scheduler = torch.optim.lr_scheduler.SequentialLR(
+                optimizer=optimizer,
+                schedulers=[warmup_scheduler, cosine_scheduler],
+                milestones=[warmup_epochs]
             )
             return {
                 "optimizer": optimizer,
@@ -127,6 +164,22 @@ class ResShiftDiffusionModule(pl.LightningModule):
     def inference(self, im_lq: torch.Tensor, save_progress: bool = False):
         model = self.net_ema if hasattr(self, "net_ema") else self.net
         
+        scale = self.hparams.eval_crop_border
+        _, _, h_old, w_old = im_lq.shape
+
+        window_size = self.hparams.network_config["params"]["window_size"]
+        unet_downsample = 8
+        latent_target_mod = window_size * unet_downsample
+        hr_target_mod = latent_target_mod * scale
+        lcm_val = math.lcm(scale, hr_target_mod)
+        mod = lcm_val // scale
+
+        pad_h = (mod - h_old % mod) % mod
+        pad_w = (mod - w_old % mod) % mod
+        if pad_h > 0 or pad_w > 0:
+            im_lq = F.pad(im_lq, (0, pad_w, 0, pad_h), mode='reflect')
+
+
         # Calculate exactly which timesteps to capture for visualization
         indices = []
         if save_progress:
@@ -168,6 +221,15 @@ class ResShiftDiffusionModule(pl.LightningModule):
         preds = sample_decode * 0.5 + 0.5
         preds = torch.clamp(preds, 0.0, 1.0)
         
+        if pad_h > 0 or pad_w > 0:
+            hr_h = h_old * scale
+            hr_w = w_old * scale
+
+            preds = preds[:, :, :hr_h, :hr_w]
+            
+            if save_progress:
+                progress_images = [img[:, :, :hr_h, :hr_w] for img in progress_images]
+
         if save_progress:
             return preds, progress_images
         return preds

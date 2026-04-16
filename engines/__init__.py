@@ -8,3 +8,4 @@ from .vqgan_engine import VQGANModule
 from .ugsr_engine import UGSRLightningModule
 from .ogsrn_sortn_engine import SORTNModule
 from .ogsrn_engine import OGSRNModule
+from .resshift_engine import ResShiftDiffusionModule

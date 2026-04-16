@@ -5,6 +5,8 @@ from . import gaussian_diffusion as gd
 from .respace import SpacedDiffusion, space_timesteps, SpacedDiffusionDDPM
 from utils import DIFFUSION_REGISTRY
 
+
+@DIFFUSION_REGISTRY.register()
 def create_gaussian_diffusion(
     *,
     normalize_input,

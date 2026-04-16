@@ -49,35 +49,92 @@ ema_decay: 0.999
 # LightningModule Configuration (SRDiffusionModule)
 # ==============================================================================
 lightning_module:
-  target: SRRegressionModule
+  target: ResShiftDiffusionModule
   params:
     eval_crop_border: ${globals.scale}        # Same as scale factor to ignore boundaries during evaluation
 
     optimizer_config:
-      lr: 2.0e-4
+      lr: 5e-5
       weight_decay: 0.0
-      betas: [0.9, 0.99]
+      betas: [0.9, 0.999]
 
     # ----------------------------------------------------------------------------
     # Learning Rate Scheduler
     # ----------------------------------------------------------------------------
     lr_scheduler_config:
-      type: "MultiStepLR"
-      milestones: [300]
-      gamma: 0.5
+      type: "cosin"
+      warmup_epoch: 5
+      T_max: 295  # 5 epoch warmup
+      eta_min: 2e-5
+      
 
     # ----------------------------------------------------------------------------
     # Network
     # ----------------------------------------------------------------------------
     network_config:
-      target: RRDBNet
+      target: UNetModelSwin
       params:
-        num_in_ch: 3
-        num_out_ch: 3
-        num_feat: 64
-        num_block: 23
-        num_grow_ch: 32
-        scale: ${globals.scale}
+        image_size: ${globals.lq_patch_size}
+        in_channels: 3   # 需要改成对应的Latent Space的Dimention
+        model_channels: 160
+        out_channels: 3  # The same as the in channels
+        attention_resolutions: [64,32,16,8] # 全覆盖，需要进行对应的修改
+        dropout: 0
+        channel_mult: [1, 2, 2, 4]
+        num_res_blocks: [2, 2, 2, 2]
+        conv_resample: True
+        dims: 2
+        use_fp16: False
+        num_head_channels: 32
+        use_scale_shift_norm: True
+        resblock_updown: False
+        swin_depth: 2
+        swin_embed_dim: 192
+        window_size: 8
+        mlp_ratio: 4
+        cond_lq: True
+        lq_size: ${globals.lq_patch_size}
+
+
+    diffusion_config:
+      target: create_gaussian_diffusion
+      params:
+        sf: ${globals.scale} 
+        schedule_name: exponential
+        schedule_kwargs:
+          power: 0.3
+        etas_end: 0.99
+        steps: 15
+        min_noise_level: 0.04
+        kappa: 2.0
+        weighted_mse: False
+        predict_type: xstart
+        timestep_respacing: ~
+        scale_factor: 1.0
+        normalize_input: True
+        latent_flag: True
+
+    autoencoder_config:
+      target: VQModelResShift
+      params:
+        embed_dim: 3
+        n_embed: 8192
+        ddconfig:
+          double_z: False
+          z_channels: 3
+          resolution: 256
+          in_channels: 3
+          out_ch: 3
+          ch: 128
+          ch_mult:
+          - 1
+          - 2
+          - 4
+          num_res_blocks: 2
+          attn_resolutions: []
+          dropout: 0.0
+
+    autoencoder_ckpt_path: logs/VQGAN/X4/version_15/best-epoch=194-val/psnr=27.2524.ckpt
 
 # ==============================================================================
 # Image Logger

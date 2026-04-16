@@ -135,12 +135,13 @@ export HF_ENDPOINT=https://hf-mirror.com
 
 
 #######     ResShift  ############
-# 后面再说, 太难了这个
 # #### VQGAN
 # # python test.py \
-# tsp ./run_test.sh \
-# --config configs/VQGAN/vqgan-x4.yaml \
-# -n VQGAN/X4
+tsp ./run_test.sh \
+python test.py \
+--config configs/VQGAN/vqgan-x4.yaml \
+-n VQGAN/X4 \
+--ckpt logs/VQGAN/X4/version_12/epoch=212-last.ckpt
 
 # python test.py \
 # tsp ./run_test.sh \
@@ -187,20 +188,20 @@ export HF_ENDPOINT=https://hf-mirror.com
 
 # #### 2. test SRUN
 # python test.py \
-tsp ./run_test.sh \
---config configs/ogsrn/srun-x4.yaml \
--n OGSRN/SRUN/X4 \
---ckpt logs/OGSRN/SRUN/X4/version_0/best-epoch=122-val/psnr=26.0314.ckpt
+# tsp ./run_test.sh \
+# --config configs/ogsrn/srun-x4.yaml \
+# -n OGSRN/SRUN/X4 \
+# --ckpt logs/OGSRN/SRUN/X4/version_0/best-epoch=122-val/psnr=26.0314.ckpt
 
 # python test.py \
-tsp ./run_test.sh \
---config configs/ogsrn/srun-x8.yaml \
--n OGSRN/SRUN/X8 \
---ckpt logs/OGSRN/SRUN/X8/version_0/best-epoch=068-val/psnr=25.2672.ckpt
+# tsp ./run_test.sh \
+# --config configs/ogsrn/srun-x8.yaml \
+# -n OGSRN/SRUN/X8 \
+# --ckpt logs/OGSRN/SRUN/X8/version_0/best-epoch=068-val/psnr=25.2672.ckpt
 
 
 # python test.py \
-tsp ./run_test.sh \
---config configs/ogsrn/srun-x16.yaml \
--n OGSRN/SRUN/X16 \
---ckpt logs/OGSRN/SRUN/X16/version_0/best-epoch=260-val/psnr=24.8504.ckpt
+# tsp ./run_test.sh \
+# --config configs/ogsrn/srun-x16.yaml \
+# -n OGSRN/SRUN/X16 \
+# --ckpt logs/OGSRN/SRUN/X16/version_0/best-epoch=260-val/psnr=24.8504.ckpt

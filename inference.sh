@@ -138,12 +138,13 @@ export HF_ENDPOINT=https://hf-mirror.com
 
 
 #######     ResShift  ############
-# 后面再说, 太难了这个
 # #### VQGAN
-# # python inference.py \
 # tsp ./run_inference.sh \
-# --config configs/VQGAN/vqgan-x4.yaml \
-# -n VQGAN/X4
+python inference.py \
+--config configs/VQGAN/vqgan-x4.yaml \
+-n VQGAN/X4 \
+--ckpt logs/VQGAN/X4/version_12/best-epoch=092-val/psnr=27.0352.ckpt \
+--output_dir logs/VQGAN/X4/inference_results_best_ckpt
 
 # python inference.py \
 # tsp ./run_inference.sh \
