@@ -123,38 +123,39 @@ export HF_ENDPOINT=https://hf-mirror.com
 
 #### VQGAN
 # python train.py \
-tsp ./run_train.sh \
-python train.py \
---config configs/VQGAN/vqgan-x4.yaml \
--n VQGAN/X4 \
---resume logs/VQGAN/X4/version_12/best-epoch=092-val/psnr=27.0352.ckpt
+# tsp ./run_train.sh \
+# python train.py \
+# --config configs/VQGAN/vqgan-x4.yaml \
+# -n VQGAN/X4 \
+# --resume logs/VQGAN/X4/version_12/best-epoch=092-val/psnr=27.0352.ckpt
 
 # python train.py \
-tsp ./run_train.sh \
---config configs/VQGAN/vqgan-x8.yaml \
--n VQGAN/X8
+# tsp ./run_train.sh \
+# --config configs/VQGAN/vqgan-x8.yaml \
+# -n VQGAN/X8
 
 # python train.py \
-tsp ./run_train.sh \
---config configs/VQGAN/vqgan-x16.yaml \
--n VQGAN/X16
+# tsp ./run_train.sh \
+# --config configs/VQGAN/vqgan-x16.yaml \
+# -n VQGAN/X16
 
 
 #### ResShift
+# python train.py \
 # tsp ./run_train.sh \
-python train.py \
---config configs/resshift/resshift-x4.yaml \
--n ResShift/X4
+# --config configs/resshift/resshift-x4.yaml \
+# -n ResShift/X4 \
+# --resume logs/ResShift/X4/version_0/epoch=074-last.ckpt
 
+# python train.py \
 # tsp ./run_train.sh \
-python train.py \
---config configs/resshift/resshift-x8.yaml \
--n ResShift/X8
+# --config configs/resshift/resshift-x8.yaml \
+# -n ResShift/X8
 
+# python train.py \
 # tsp ./run_train.sh \
-python train.py \
---config configs/resshift/resshift-x16.yaml \
--n ResShift/X16
+# --config configs/resshift/resshift-x16.yaml \
+# -n ResShift/X16
 
 #######     UGSR  ############
 
@@ -202,3 +203,21 @@ python train.py \
 # tsp ./run_train.sh \
 # --config configs/ogsrn/srun-x16.yaml \
 # -n OGSRN/SRUN/X16
+
+
+#######     EDiffIR  ############
+
+# python train.py \
+tsp ./run_train.sh \
+--config configs/EDiffIR/ediffir-x4.yaml \
+-n EDiffIR/X4
+
+# python train.py \
+tsp ./run_train.sh \
+--config configs/EDiffIR/ediffir-x8.yaml \
+-n EDiffIR/X8
+
+# python train.py \
+tsp ./run_train.sh \
+--config configs/EDiffIR/ediffir-x16.yaml \
+-n EDiffIR/X16

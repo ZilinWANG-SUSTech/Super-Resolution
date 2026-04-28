@@ -15,4 +15,6 @@ from models.OGSRN.SORTN import SORTN
 from models.OGSRN.SRUN import SRUN_SinglePass
 from models.ResShift.scripy_util import create_gaussian_diffusion
 from models.ResShift.unet import UNetModelSwin
+from models.EDiffSR.sde_utils import IRSDE
+from models.EDiffSR.DenoisingNAFNet_arch import ConditionalNAFNet
 

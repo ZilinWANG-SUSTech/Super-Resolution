@@ -140,21 +140,45 @@ export HF_ENDPOINT=https://hf-mirror.com
 #######     ResShift  ############
 # #### VQGAN
 # tsp ./run_inference.sh \
-python inference.py \
---config configs/VQGAN/vqgan-x4.yaml \
--n VQGAN/X4 \
---ckpt logs/VQGAN/X4/version_12/best-epoch=092-val/psnr=27.0352.ckpt \
---output_dir logs/VQGAN/X4/inference_results_best_ckpt
-
 # python inference.py \
+# --config configs/VQGAN/vqgan-x4.yaml \
+# -n VQGAN/X4 \
+# --ckpt logs/VQGAN/X4/version_12/best-epoch=092-val/psnr=27.0352.ckpt \
+# --output_dir logs/VQGAN/X4/inference_results_best_ckpt
+
+# # python inference.py \
 # tsp ./run_inference.sh \
+# python inference.py \
 # --config configs/VQGAN/vqgan-x8.yaml \
-# -n VQGAN/X8
+# -n VQGAN/X8 \
+# --ckpt logs/VQGAN/X8/version_5/epoch=284-last.ckpt \
+# --output_dir logs/VQGAN/X8/inference_results_last_ckpt
 
 # python inference.py \
 # tsp ./run_inference.sh \
 # --config configs/VQGAN/vqgan-x16.yaml \
 # -n VQGAN/X16
+
+#### ResShift
+# python inference.py \
+# tsp ./run_inference.sh \
+# python inference.py \
+# --config configs/resshift/resshift-x4.yaml \
+# -n ResShift/X4 \
+# --ckpt logs/ResShift/X4/version_1/best-epoch=155-val/psnr=25.0476.ckpt
+
+# python inference.py \
+tsp ./run_inference.sh \
+--config configs/resshift/resshift-x8.yaml \
+-n ResShift/X8 \
+--ckpt logs/ResShift/X8/version_0/best-epoch=023-val/psnr=24.5291.ckpt
+
+# python inference.py \
+tsp ./run_inference.sh \
+--config configs/resshift/resshift-x16.yaml \
+-n ResShift/X16 \
+--ckpt logs/ResShift/X16/version_0/best-epoch=170-val/psnr=24.4969.ckpt
+
 
 
 
@@ -197,14 +221,14 @@ python inference.py \
 # --ckpt logs/OGSRN/SRUN/X4/version_0/best-epoch=122-val/psnr=26.0314.ckpt
 
 # python inference.py \
-tsp ./run_inference.sh \
---config configs/ogsrn/srun-x8.yaml \
--n OGSRN/SRUN/X8 \
---ckpt logs/OGSRN/SRUN/X8/version_0/best-epoch=068-val/psnr=25.2672.ckpt
+# tsp ./run_inference.sh \
+# --config configs/ogsrn/srun-x8.yaml \
+# -n OGSRN/SRUN/X8 \
+# --ckpt logs/OGSRN/SRUN/X8/version_0/best-epoch=068-val/psnr=25.2672.ckpt
 
 
-# python inference.py \
-tsp ./run_inference.sh \
---config configs/ogsrn/srun-x16.yaml \
--n OGSRN/SRUN/X16 \
---ckpt logs/OGSRN/SRUN/X16/version_0/best-epoch=260-val/psnr=24.8504.ckpt
+# # python inference.py \
+# tsp ./run_inference.sh \
+# --config configs/ogsrn/srun-x16.yaml \
+# -n OGSRN/SRUN/X16 \
+# --ckpt logs/OGSRN/SRUN/X16/version_0/best-epoch=260-val/psnr=24.8504.ckpt

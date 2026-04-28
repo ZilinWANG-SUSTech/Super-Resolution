@@ -136,7 +136,7 @@ lightning_module:
           attn_resolutions: [16]
           dropout: 0.0
 
-    autoencoder_ckpt_path: needToAdd
+    autoencoder_ckpt_path: logs/VQGAN/X16/version_0/best-epoch=116-val/psnr=25.3381.ckpt
 
 # ==============================================================================
 # Image Logger

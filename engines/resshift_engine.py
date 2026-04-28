@@ -249,13 +249,12 @@ class ResShiftDiffusionModule(pl.LightningModule):
             
         # Metric evaluation
         preds_eval = torch.clamp(preds.detach().float(), 0.0, 1.0)
-        hr_eval = torch.clamp(hr.detach().float(), 0.0, 1.0)
+        hr_eval = torch.clamp(hr.detach().float() * 0.5 + 0.5, 0.0, 1.0)
         self.evaluator(preds_eval, hr_eval)
         
         # Image Logging to TensorBoard
         if log_images_this_batch and self.global_rank == 0:
 
-            
             # Format: [Batch, K_steps, Channels, Height, Width]
             progress_stack = torch.stack(progress_images, dim=1) 
             # Flatten to: [(Batch * K_steps), Channels, Height, Width] for the grid

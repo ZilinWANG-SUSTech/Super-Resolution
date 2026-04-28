@@ -2,8 +2,8 @@
 # 🌟 (Global Settings)
 # ==============================================================================
 globals:
-  scale: 8
-  lq_patch_size: 48
+  scale: 16
+  lq_patch_size: 24
 
 # ==============================================================================
 # Global & Trainer Configuration
@@ -16,6 +16,7 @@ trainer:
   log_every_n_steps: 10
   check_val_every_n_epoch: 3
   accumulate_grad_batches: 4
+
 
 # ==============================================================================
 # DataModule Configuration (SRDataModule)
@@ -37,105 +38,60 @@ data:
   lq_patch_size: ${globals.lq_patch_size}   # The size to crop from Low-Res image
   scale: ${globals.scale}                   # Upsampling factor. HR patch will be 32 * 4 = 128
 
-  image_range: "-1~1"
+  image_range: "0~1"
 
 # ==============================================================================
 # Ema decay
 # ==============================================================================
-ema_decay: 0.999
+ema_decay: 0.995
 
 
 # ==============================================================================
 # LightningModule Configuration (SRDiffusionModule)
 # ==============================================================================
 lightning_module:
-  target: ResShiftDiffusionModule
+  target: IRSDEEngine
   params:
     eval_crop_border: ${globals.scale}        # Same as scale factor to ignore boundaries during evaluation
-
+    scale_factor: ${globals.scale}
+    
     optimizer_config:
-      lr: 5e-5
+      type: AdamW
+      lr: 4e-5
       weight_decay: 0.0
-      betas: [0.9, 0.999]
+      betas: [0.9, 0.99]
 
     # ----------------------------------------------------------------------------
     # Learning Rate Scheduler
     # ----------------------------------------------------------------------------
     lr_scheduler_config:
-      type: "cosin"
-      warmup_epoch: 5
-      T_max: 295  # 5 epoch warmup
-      eta_min: 2e-5
-      
+      type: TrueCosineAnnealingLR
+      T_max: ${trainer.max_epochs}
+      eta_min: 1e-7
+
+    loss_config:
+      loss_type: l1
+      is_weighted: False
+      weight: 1.0
+
+    sde_config:
+      max_sigma: 50
+      T: 100
+      schedule: cosine # linear, cosine
+      eps: 0.005
 
     # ----------------------------------------------------------------------------
     # Network
     # ----------------------------------------------------------------------------
     network_config:
-      target: UNetModelSwin
+      target: ConditionalNAFNet
       params:
-        image_size: ${globals.lq_patch_size}
-        in_channels: 4   # 需要改成对应的Latent Space的Dimention
-        model_channels: 160
-        out_channels: 4  # The same as the in channels
-        attention_resolutions: [48,24,12,6] # 全覆盖，需要进行对应的修改
-        dropout: 0
-        channel_mult: [1, 2, 2, 4]
-        num_res_blocks: [2, 2, 2, 2]
-        conv_resample: True
-        dims: 2
-        use_fp16: False
-        num_head_channels: 32
-        use_scale_shift_norm: True
-        resblock_updown: False
-        swin_depth: 2
-        swin_embed_dim: 192
-        window_size: 6
-        mlp_ratio: 4
-        cond_lq: True
-        lq_size: ${globals.lq_patch_size}
+        img_channel: 3
+        width: 64
+        enc_blk_nums: [14, 1, 1, 1]
+        middle_blk_num: 1
+        dec_blk_nums: [1, 1, 1, 1]
 
-
-    diffusion_config:
-      target: create_gaussian_diffusion
-      params:
-        sf: ${globals.scale} 
-        schedule_name: exponential
-        schedule_kwargs:
-          power: 0.3
-        etas_end: 0.99
-        steps: 15
-        min_noise_level: 0.04
-        kappa: 2.0
-        weighted_mse: False
-        predict_type: xstart
-        timestep_respacing: ~
-        scale_factor: 1.0
-        normalize_input: True
-        latent_flag: True
-
-    autoencoder_config:
-      target: VQModelResShift
-      params:
-        embed_dim: 4
-        n_embed: 16384
-        ddconfig:
-          double_z: False
-          z_channels: 4
-          resolution: 256
-          in_channels: 3
-          out_ch: 3
-          ch: 128
-          ch_mult:
-          - 1
-          - 2
-          - 2
-          - 4
-          num_res_blocks: 2
-          attn_resolutions: [32]
-          dropout: 0.0
-
-    autoencoder_ckpt_path: logs/VQGAN/X8/version_5/best-epoch=188-val/psnr=25.8635.ckpt
 
 # ==============================================================================
 # Image Logger

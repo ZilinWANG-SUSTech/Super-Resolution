@@ -137,21 +137,43 @@ export HF_ENDPOINT=https://hf-mirror.com
 #######     ResShift  ############
 # #### VQGAN
 # # python test.py \
-tsp ./run_test.sh \
-python test.py \
---config configs/VQGAN/vqgan-x4.yaml \
--n VQGAN/X4 \
---ckpt logs/VQGAN/X4/version_12/epoch=212-last.ckpt
+# tsp ./run_test.sh \
+# python test.py \
+# --config configs/VQGAN/vqgan-x4.yaml \
+# -n VQGAN/X4 \
+# --ckpt logs/VQGAN/X4/version_12/epoch=212-last.ckpt
 
 # python test.py \
 # tsp ./run_test.sh \
+# python test.py \
 # --config configs/VQGAN/vqgan-x8.yaml \
-# -n VQGAN/X8
+# -n VQGAN/X8 \
+# --ckpt logs/VQGAN/X8/version_5/best-epoch=188-val/psnr=25.8635.ckpt
 
 # python test.py \
 # tsp ./run_test.sh \
 # --config configs/VQGAN/vqgan-x16.yaml \
 # -n VQGAN/X16
+
+#### ResShift
+# python test.py \
+# tsp ./run_test.sh \
+# python test.py \
+# --config configs/resshift/resshift-x4.yaml \
+# -n ResShift/X4 \
+# --ckpt logs/ResShift/X4/version_1/best-epoch=155-val/psnr=25.0476.ckpt
+
+# python test.py \
+tsp ./run_test.sh \
+--config configs/resshift/resshift-x8.yaml \
+-n ResShift/X8 \
+--ckpt logs/ResShift/X8/version_0/best-epoch=023-val/psnr=24.5291.ckpt
+
+# python test.py \
+tsp ./run_test.sh \
+--config configs/resshift/resshift-x16.yaml \
+-n ResShift/X16 \
+--ckpt logs/ResShift/X16/version_0/best-epoch=170-val/psnr=24.4969.ckpt
 
 
 
