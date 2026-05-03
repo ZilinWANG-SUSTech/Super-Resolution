@@ -168,16 +168,16 @@ export HF_ENDPOINT=https://hf-mirror.com
 # --ckpt logs/ResShift/X4/version_1/best-epoch=155-val/psnr=25.0476.ckpt
 
 # python inference.py \
-tsp ./run_inference.sh \
---config configs/resshift/resshift-x8.yaml \
--n ResShift/X8 \
---ckpt logs/ResShift/X8/version_0/best-epoch=023-val/psnr=24.5291.ckpt
+# tsp ./run_inference.sh \
+# --config configs/resshift/resshift-x8.yaml \
+# -n ResShift/X8 \
+# --ckpt logs/ResShift/X8/version_0/best-epoch=023-val/psnr=24.5291.ckpt
 
-# python inference.py \
-tsp ./run_inference.sh \
---config configs/resshift/resshift-x16.yaml \
--n ResShift/X16 \
---ckpt logs/ResShift/X16/version_0/best-epoch=170-val/psnr=24.4969.ckpt
+# # python inference.py \
+# tsp ./run_inference.sh \
+# --config configs/resshift/resshift-x16.yaml \
+# -n ResShift/X16 \
+# --ckpt logs/ResShift/X16/version_0/best-epoch=170-val/psnr=24.4969.ckpt
 
 
 
@@ -232,3 +232,26 @@ tsp ./run_inference.sh \
 # --config configs/ogsrn/srun-x16.yaml \
 # -n OGSRN/SRUN/X16 \
 # --ckpt logs/OGSRN/SRUN/X16/version_0/best-epoch=260-val/psnr=24.8504.ckpt
+
+
+#######     EDiffIR  ############
+
+# python inference.py \
+tsp ./run_inference.sh \
+--config configs/EDiffIR/ediffir-x4.yaml \
+-n EDiffIR/X4 \
+--ckpt logs/EDiffIR/X4/version_8/epoch=599-last.ckpt
+# --ckpt logs/EDiffIR/X4/version_8/best-epoch=029-val/psnr=23.0761.ckpt
+
+
+# python inference.py \
+tsp ./run_inference.sh \
+--config configs/EDiffIR/ediffir-x8.yaml \
+-n EDiffIR/X8 \
+--ckpt logs/EDiffIR/X8/version_2/epoch=359-last.ckpt
+
+
+tsp ./run_inference.sh \
+--config configs/EDiffIR/ediffir-x16.yaml \
+-n EDiffIR/X16 \
+--ckpt 

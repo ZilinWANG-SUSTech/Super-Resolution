@@ -14,8 +14,9 @@ trainer:
   devices: [0]               # Use list for specific GPUs, e.g., [0, 1]
   precision: "bf16-mixed"      # FP16 mixed precision for faster training
   log_every_n_steps: 10
-  check_val_every_n_epoch: 3
-  accumulate_grad_batches: 4
+  check_val_every_n_epoch: 30
+  accumulate_grad_batches: 8
+  num_sanity_val_steps: 0
 
 # ==============================================================================
 # DataModule Configuration (SRDataModule)
@@ -30,7 +31,7 @@ data:
   test_gt_dir: "/data/RiceSR2024/RGB-SAR/dataset/test/GT"    # Optional
   
   # DataLoader configs
-  batch_size: 4
+  batch_size: 2
   num_workers: 8
   
   # Image transformation configs

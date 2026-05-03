@@ -10,3 +10,4 @@ from .ogsrn_sortn_engine import SORTNModule
 from .ogsrn_engine import OGSRNModule
 from .resshift_engine import ResShiftDiffusionModule
 from .ediffir_engine import IRSDEEngine
+from .diwa_engine import DiwaDiffusionEngine

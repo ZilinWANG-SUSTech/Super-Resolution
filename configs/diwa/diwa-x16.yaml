@@ -2,22 +2,23 @@
 # 🌟 (Global Settings)
 # ==============================================================================
 globals:
-  scale: 4
-  lq_patch_size: 64
+  scale: 16
+  lq_patch_size: 24
 
 # ==============================================================================
 # Global & Trainer Configuration
 # ==============================================================================
 trainer:
-  max_epochs: 600
+  max_epochs: 300
   accelerator: "gpu"
   devices: [0]               # Use list for specific GPUs, e.g., [0, 1]
   precision: "bf16-mixed"      # FP16 mixed precision for faster training
   log_every_n_steps: 10
   check_val_every_n_epoch: 30
-  accumulate_grad_batches: 4
-  num_sanity_val_steps: 0
-  
+  num_sanity_val_steps: 2
+  accumulate_grad_batches: 2
+
+
 # ==============================================================================
 # DataModule Configuration (SRDataModule)
 # ==============================================================================
@@ -31,66 +32,68 @@ data:
   test_gt_dir: "/data/RiceSR2024/RGB-SAR/dataset/test/GT"    # Optional
   
   # DataLoader configs
-  batch_size: 4
+  batch_size: 8
   num_workers: 8
   
   # Image transformation configs
   lq_patch_size: ${globals.lq_patch_size}   # The size to crop from Low-Res image
   scale: ${globals.scale}                   # Upsampling factor. HR patch will be 32 * 4 = 128
 
-  image_range: "0~1"
+  image_range: "-1~1"
 
 # ==============================================================================
 # Ema decay
 # ==============================================================================
-ema_decay: 0.995
+ema_decay: 0.999
 
 
 # ==============================================================================
 # LightningModule Configuration (SRDiffusionModule)
 # ==============================================================================
 lightning_module:
-  target: IRSDEEngine
+  target: DiwaDiffusionEngine
   params:
     eval_crop_border: ${globals.scale}        # Same as scale factor to ignore boundaries during evaluation
-    scale_factor: ${globals.scale}
     
     optimizer_config:
       type: AdamW
-      lr: 4e-5
-      weight_decay: 0.0
-      betas: [0.9, 0.99]
+      lr: 1e-4
+      weight_decay: 0.0001
 
-    # ----------------------------------------------------------------------------
-    # Learning Rate Scheduler
-    # ----------------------------------------------------------------------------
-    lr_scheduler_config:
-      type: TrueCosineAnnealingLR
-      T_max: ${trainer.max_epochs}
-      eta_min: 1e-7
-
-    loss_config:
-      loss_type: l1
-      is_weighted: False
-      weight: 1.0
-
-    sde_config:
-      max_sigma: 50
-      T: 100
-      schedule: cosine # linear, cosine
-      eps: 0.005
-
-    # ----------------------------------------------------------------------------
-    # Network
-    # ----------------------------------------------------------------------------
     network_config:
-      target: ConditionalNAFNet
+      target: UNet
       params:
-        img_channel: 3
-        width: 64
-        enc_blk_nums: [14, 1, 1, 1]
-        middle_blk_num: 1
-        dec_blk_nums: [1, 1, 1, 1]
+        in_channel: 24
+        out_channel: 12
+        inner_channel: 64
+        channel_mults: [1,2,4,8,8]
+        attn_res: [16]
+        res_blocks: 2
+        dropout: 0.2
+
+    diffusion_config:
+      target: GaussianDiffusion
+      params:
+        image_size: 384
+        channels: 3
+        conditional: True
+
+    beta_schedule:
+      train:
+        schedule: linear
+        n_timestep: 2000
+        linear_start: 1e-6
+        linear_end: 1e-2
+      
+      val:
+        schedule: linear
+        n_timestep: 500
+        linear_start: 1e-6
+        linear_end: 1e-2
+
+
+
+
 
 
 # ==============================================================================

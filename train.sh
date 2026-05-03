@@ -208,16 +208,36 @@ export HF_ENDPOINT=https://hf-mirror.com
 #######     EDiffIR  ############
 
 # python train.py \
-tsp ./run_train.sh \
---config configs/EDiffIR/ediffir-x4.yaml \
--n EDiffIR/X4
+# tsp ./run_train.sh \
+# --config configs/EDiffIR/ediffir-x4.yaml \
+# -n EDiffIR/X4
 
 # python train.py \
-tsp ./run_train.sh \
---config configs/EDiffIR/ediffir-x8.yaml \
--n EDiffIR/X8
+# tsp ./run_train.sh \
+# --config configs/EDiffIR/ediffir-x8.yaml \
+# -n EDiffIR/X8
 
-# python train.py \
+# # python train.py \
 tsp ./run_train.sh \
 --config configs/EDiffIR/ediffir-x16.yaml \
--n EDiffIR/X16
+-n EDiffIR/X16 \
+--resume logs/EDiffIR/X16/version_2/epoch=029-last.ckpt
+
+
+
+#######     Diwa  ############
+
+# python train.py \
+tsp ./run_train.sh \
+--config configs/diwa/diwa-x4.yaml \
+-n Diwa/X4
+
+# python train.py \
+tsp ./run_train.sh \
+--config configs/diwa/diwa-x8.yaml \
+-n Diwa/X8
+
+# python train.py \
+tsp ./run_train.sh \
+--config configs/diwa/diwa-x16.yaml \
+-n Diwa/X16

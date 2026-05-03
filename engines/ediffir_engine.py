@@ -9,7 +9,7 @@ import einops
 from utils.metrics import SREvaluatorPyIQA
 from utils import ENGINE_REGISTRY, build_network
 from models import IRSDE
-
+from tqdm import tqdm
 
 class MatchingLoss(nn.Module):
     def __init__(self, loss_type='l1', is_weighted=False):
@@ -93,7 +93,7 @@ class IRSDEEngine(pl.LightningModule):
         # Generate random timesteps and noisy states using x0(GT) and mu(upscaled LQ)
         timesteps, noisy_states = self.sde.generate_random_states(x0=hr, mu=mu)
         timesteps = timesteps.to(self.device)
-        
+
         # Set mu to the conditional upscaled image
         self.sde.set_mu(mu)
 
@@ -233,3 +233,32 @@ class IRSDEEngine(pl.LightningModule):
             log[name] = triplet
 
         return log
+
+    @torch.no_grad()
+    def reverse_sde_with_intermediates(self, xt: torch.Tensor, num_states: int = 5, **kwargs) -> tuple:
+        """
+        Run the reverse SDE process and collect a specific number of intermediate 
+        denoising states for visualization purposes.
+        """
+        # Fix scope: T and other SDE parameters belong to self.sde
+        T = self.sde.T 
+        x = xt.clone()
+        intermediate_states = []
+        
+        # Calculate the interval to sample intermediate frames evenly
+        interval = max(1, T // num_states)
+
+        # Run the reverse diffusion loop
+        for t in tqdm(reversed(range(1, T + 1)), desc="Denoising process"):
+            # Fix scope: score_fn and reverse_sde_step belong to self.sde
+            score = self.sde.score_fn(x, t, **kwargs)
+            x = self.sde.reverse_sde_step(x, score, t)
+
+            # Sample intermediate states based on the interval
+            if t % interval == 0 or t == 1:
+                # Clamp the state to [0, 1] for valid image representation
+                clamped_x = torch.clamp(x.clone().detach(), 0.0, 1.0)
+                intermediate_states.append(clamped_x)
+
+        # Return final prediction and the collected intermediate states
+        return x, intermediate_states
